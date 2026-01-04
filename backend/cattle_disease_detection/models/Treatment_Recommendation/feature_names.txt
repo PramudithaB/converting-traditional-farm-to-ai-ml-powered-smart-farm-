@@ -1,0 +1,10 @@
+Disease_Encoded
+Severity
+Weight
+Age
+Temperature
+Previous_Disease_Encoded
+Temp_Deviation
+Weight_Age_Ratio
+Has_History
+Severity_Temp_Interaction

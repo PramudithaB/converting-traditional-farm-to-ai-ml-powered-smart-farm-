@@ -1,0 +1,8 @@
+Eating_Time
+Lying_Time
+Standing_Time
+Walking_Time
+Total_Active_Time
+Active_Ratio
+Eating_Walking_Ratio
+Lying_Standing_Ratio

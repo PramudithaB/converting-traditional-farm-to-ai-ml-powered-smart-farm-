@@ -1,0 +1,8 @@
+Disease_Encoded
+Weight
+Age
+Temperature
+Previous_Disease_Encoded
+Temp_Deviation
+Weight_Age_Ratio
+Has_History

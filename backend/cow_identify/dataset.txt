@@ -1,0 +1,3 @@
+test: https://drive.google.com/drive/folders/1tDQpzMbhL2R9GDCE6kx1Pj8Qxa0qNmmU?usp=sharing
+train: https://drive.google.com/drive/folders/1ZZfds0fR9vRJqqHf_gZT9hjVPjcBpdDQ?usp=drive_link
+valid: https://drive.google.com/drive/folders/1tMROqLmOGWow9RxdxZKw6n4WWqhLRs4P?usp=drive_link
