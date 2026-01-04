@@ -43,15 +43,14 @@ Thumbs.db
 desktop.ini
 
 # Model Files (Large Binary Files)
-*.h5
-*.keras
-*.pkl
-*.pt
-*.pth
-*.onnx
-*.pb
-*.tflite
-
+#*.h5
+#*.keras
+#*.pkl
+#*.pt
+#*.pth
+#*.onnx
+#*.pb
+#*.tflite
 # Data Files (Can be large)
 *.csv
 datasets/
