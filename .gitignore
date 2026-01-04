@@ -42,15 +42,6 @@ conda-meta/
 Thumbs.db
 desktop.ini
 
-# Model Files (Large Binary Files)
-#*.h5
-#*.keras
-#*.pkl
-#*.pt
-#*.pth
-#*.onnx
-#*.pb
-#*.tflite
 # Data Files (Can be large)
 *.csv
 datasets/
@@ -76,8 +67,6 @@ logs/
 *.gif
 *.bmp
 *.tiff
-!*.png  # Keep visualization plots in models folder
-models/**/*.png  # But include model performance plots
 
 # Videos (Very large)
 *.mp4
@@ -117,7 +106,3 @@ site/
 !WORKFLOW_EXPLANATION.md
 !BEHAVIOR_TIME_FRAMES.md
 !requirements.txt
-
-# Keep model metadata but not the binary files
-!models/**/feature_names.txt
-!models/**/model_comparison_results.csv
