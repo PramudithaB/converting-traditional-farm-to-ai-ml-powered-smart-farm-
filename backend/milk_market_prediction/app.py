@@ -1,7 +1,10 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import joblib
 import pandas as pd
+
 app = Flask(__name__)
+CORS(app)
 
 MODEL_PATH = "rf_milk_price_model.pkl"
 model = joblib.load(MODEL_PATH)
@@ -12,7 +15,7 @@ def home():
         "status": "Milk Market Prediction API is running"
     })
 
-@app.route("/predict-income", methods=["POST"])
+@app.route("/milk-market/predict-income", methods=["POST"])
 def predict_income():
     try:
         data = request.get_json()

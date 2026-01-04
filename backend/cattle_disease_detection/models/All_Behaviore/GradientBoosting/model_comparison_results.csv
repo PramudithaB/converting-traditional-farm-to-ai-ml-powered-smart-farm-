@@ -1,0 +1,5 @@
+,accuracy,precision,recall,f1_score,roc_auc,cv_mean,cv_std
+Logistic Regression,1.0,1.0,1.0,1.0,1.0,1.0,0.0
+Random Forest,1.0,1.0,1.0,1.0,1.0,1.0,0.0
+Gradient Boosting,1.0,1.0,1.0,1.0,1.0,1.0,0.0
+SVM,1.0,1.0,1.0,1.0,1.0,1.0,0.0

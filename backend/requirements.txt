@@ -1,0 +1,25 @@
+# Smart Farm AI Backend - Unified Requirements
+# All dependencies for the consolidated backend API
+
+# Core Web Framework
+flask==3.0.0
+flask-cors==4.0.0
+
+# Machine Learning & Deep Learning
+tensorflow==2.15.0
+scikit-learn==1.6.1
+ultralytics==8.0.196
+
+# Data Processing
+numpy==1.24.3
+pandas==2.0.3
+
+# Model Persistence
+joblib==1.3.2
+
+# Image Processing
+pillow==10.1.0
+opencv-python==4.8.1.78
+
+# Utilities
+python-multipart==0.0.6

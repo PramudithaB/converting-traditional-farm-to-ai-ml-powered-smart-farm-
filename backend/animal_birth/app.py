@@ -1,8 +1,10 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import joblib
 import numpy as np
 
 app = Flask(__name__)
+CORS(app)
 
 # Load model
 MODEL_PATH = "clf.pkl"
@@ -12,7 +14,7 @@ model = joblib.load(MODEL_PATH)
 def home():
     return "Animal Birth Prediction API is running 🚀"
 
-@app.route("/predict", methods=["POST"])
+@app.route("/animal-birth/predict", methods=["POST"])
 def predict():
     try:
         data = request.get_json()
@@ -35,4 +37,4 @@ def predict():
         return jsonify({"error": str(e)}), 400
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(host="0.0.0.0", port=5000, debug=True)

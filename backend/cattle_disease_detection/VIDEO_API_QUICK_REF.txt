@@ -1,0 +1,283 @@
+"""
+🎥 VIDEO ANALYSIS API - QUICK REFERENCE
+========================================
+
+ENDPOINT: POST /api/video/analyze
+
+SUPPORTED FORMATS: MP4, AVI, MOV, MKV, WEBM
+
+┌─────────────────────────────────────────────────────────────────┐
+│ PYTHON EXAMPLE                                                  │
+└─────────────────────────────────────────────────────────────────┘
+
+import requests
+
+with open('cattle_video.mp4', 'rb') as video:
+    response = requests.post(
+        'http://localhost:5000/api/video/analyze',
+        files={'video': video},
+        data={
+            'frame_interval': 30,      # 1 frame per second (recommended)
+            'detect_disease': 'true',  # Enable disease detection
+            'detect_behavior': 'true'  # Enable behavior detection
+        }
+    )
+
+result = response.json()
+
+# Video information
+print(f"Duration: {result['video_info']['duration']} seconds")
+print(f"FPS: {result['video_info']['fps']}")
+print(f"Analyzed: {result['video_info']['analyzed_frames']} frames")
+
+# Behavior summary
+print("\nBehaviors detected:")
+for behavior, stats in result['summary']['behaviors'].items():
+    print(f"  {behavior}: {stats['count']} times ({stats['avg_confidence']:.1%})")
+
+# Disease summary  
+print("\nDiseases detected:")
+for disease, stats in result['summary']['diseases'].items():
+    print(f"  {disease}: {stats['count']} frames ({stats['avg_confidence']:.1%})")
+    print(f"    First: {stats['first_seen']}s, Last: {stats['last_seen']}s")
+
+┌─────────────────────────────────────────────────────────────────┐
+│ CURL EXAMPLE                                                    │
+└─────────────────────────────────────────────────────────────────┘
+
+curl -X POST http://localhost:5000/api/video/analyze \
+  -F "video=@cattle_video.mp4" \
+  -F "frame_interval=30" \
+  -F "detect_disease=true" \
+  -F "detect_behavior=true"
+
+┌─────────────────────────────────────────────────────────────────┐
+│ PARAMETERS                                                      │
+└─────────────────────────────────────────────────────────────────┘
+
+video              Video file (required)
+                   Formats: MP4, AVI, MOV, MKV, WEBM
+                   Max size: 500 MB (recommended < 100 MB)
+
+frame_interval     Extract 1 frame every N frames (default: 30)
+                   60  = Fast (0.5 fps) - Quick overview
+                   30  = Balanced (1 fps) - Recommended ⭐
+                   15  = Accurate (2 fps) - Better results
+                   10  = Very accurate (3 fps) - Best quality
+
+detect_disease     Enable disease detection (default: true)
+                   true  = Detect diseases
+                   false = Skip disease detection (faster)
+
+detect_behavior    Enable behavior detection (default: true)
+                   true  = Detect behaviors
+                   false = Skip behavior detection (faster)
+
+┌─────────────────────────────────────────────────────────────────┐
+│ RESPONSE STRUCTURE                                              │
+└─────────────────────────────────────────────────────────────────┘
+
+{
+  "video_info": {
+    "duration": 60.5,           // seconds
+    "fps": 30.0,
+    "total_frames": 1815,
+    "analyzed_frames": 60,
+    "frame_interval": 30
+  },
+  
+  "behavior_timeline": [
+    {
+      "timestamp": 0.0,         // seconds
+      "frame": 0,
+      "behaviors": [
+        {"behavior": "eating", "confidence": 0.8312},
+        {"behavior": "standing", "confidence": 0.7541}
+      ]
+    }
+  ],
+  
+  "disease_detections": [
+    {
+      "timestamp": 5.2,         // seconds
+      "frame": 5,
+      "disease": "Mastitis",
+      "confidence": 0.8459
+    }
+  ],
+  
+  "summary": {
+    "behaviors": {
+      "eating": {
+        "count": 35,
+        "avg_confidence": 0.8123
+      }
+    },
+    "diseases": {
+      "Mastitis": {
+        "count": 48,
+        "avg_confidence": 0.8312,
+        "first_seen": 0.0,      // seconds
+        "last_seen": 58.5       // seconds
+      }
+    }
+  }
+}
+
+┌─────────────────────────────────────────────────────────────────┐
+│ PROCESSING TIME ESTIMATES                                       │
+└─────────────────────────────────────────────────────────────────┘
+
+60-second video:
+  frame_interval=60:  ~5 seconds   ⚡⚡⚡⚡
+  frame_interval=30:  ~10 seconds  ⚡⚡⚡   ← Recommended
+  frame_interval=15:  ~20 seconds  ⚡⚡
+  frame_interval=10:  ~30 seconds  ⚡
+
+┌─────────────────────────────────────────────────────────────────┐
+│ OPTIMIZATION STRATEGIES                                         │
+└─────────────────────────────────────────────────────────────────┘
+
+FASTEST (Quick Overview):
+  frame_interval=60, detect_disease=false, detect_behavior=true
+  
+BALANCED (Recommended):
+  frame_interval=30, detect_disease=true, detect_behavior=true
+  
+ACCURATE (Detailed Analysis):
+  frame_interval=15, detect_disease=true, detect_behavior=true
+  
+MAXIMUM ACCURACY:
+  frame_interval=10, detect_disease=true, detect_behavior=true
+
+┌─────────────────────────────────────────────────────────────────┐
+│ USE CASES                                                       │
+└─────────────────────────────────────────────────────────────────┘
+
+1. CCTV Recording Analysis
+   - Upload recorded surveillance footage
+   - Monitor behavior patterns over time
+   - Detect diseases in historical footage
+
+2. Mobile Video Upload
+   - Farmer records video on phone
+   - Upload to API for analysis
+   - Get diagnosis with timeline
+
+3. Batch Processing
+   - Process multiple videos from farm
+   - Compare across different cameras
+   - Aggregate results for reports
+
+4. Disease Progression Tracking
+   - Monitor how symptoms change
+   - Track first and last appearance
+   - Calculate disease duration
+
+5. Behavior Pattern Analysis
+   - Identify dominant behaviors
+   - Track activity levels
+   - Detect abnormal patterns
+
+┌─────────────────────────────────────────────────────────────────┐
+│ ERROR HANDLING                                                  │
+└─────────────────────────────────────────────────────────────────┘
+
+Error: No video file uploaded
+→ Check 'video' field in form-data
+
+Error: Invalid video file format
+→ Use MP4, AVI, MOV, MKV, or WEBM
+
+Error: Failed to process video file
+→ Check video is not corrupted
+→ Try converting with ffmpeg: ffmpeg -i input.mp4 -c:v libx264 output.mp4
+
+Error: Timeout
+→ Increase frame_interval (process fewer frames)
+→ Split video into smaller segments
+→ Compress video before upload
+
+┌─────────────────────────────────────────────────────────────────┐
+│ TESTING                                                         │
+└─────────────────────────────────────────────────────────────────┘
+
+# Using test script
+python test_video_api.py
+
+# Using Postman
+1. Import: Cattle_Disease_API.postman_collection.json
+2. Find: "9. Analyze Video File 🎥 (NEW)"
+3. Upload video file
+4. Send request
+
+# Using cURL
+curl -X POST http://localhost:5000/api/video/analyze \
+  -F "video=@your_video.mp4" \
+  -F "frame_interval=30"
+
+┌─────────────────────────────────────────────────────────────────┐
+│ MODELS USED                                                     │
+└─────────────────────────────────────────────────────────────────┘
+
+Behavior Detection:  YOLOv8s (9 behaviors)
+                     - eating, standing, lying, walking, drinking,
+                       ruminating, grooming, playing, mounting
+
+Disease Detection:   YOLOv8x-Classifier (8 diseases)
+                     - Contagious, Dermatophilosis, FMD, Healthy,
+                       Lumpy Skin, Mastitis, Pediculosis, Ringworm
+
+Confidence Thresholds:
+  Behavior: 0.3 (30%)
+  Disease:  0.5 (50%)
+
+┌─────────────────────────────────────────────────────────────────┐
+│ TIPS & BEST PRACTICES                                           │
+└─────────────────────────────────────────────────────────────────┘
+
+1. Compress videos before upload (use ffmpeg or HandBrake)
+2. Use 720p or 1080p resolution (4K is overkill)
+3. Good lighting improves detection accuracy
+4. Side view best for disease, top view for behavior
+5. Keep videos < 5 minutes (split longer videos)
+6. Use frame_interval=30 for most cases (good balance)
+7. Process one video at a time (server intensive)
+8. Save results locally for later analysis
+
+┌─────────────────────────────────────────────────────────────────┐
+│ DOCUMENTATION                                                   │
+└─────────────────────────────────────────────────────────────────┘
+
+VIDEO_ANALYSIS_API.md         Complete guide with examples
+API_DOCUMENTATION.md           Full API reference (all endpoints)
+VIDEO_API_READY.md             Quick start summary
+test_video_api.py              Test script with examples
+
+┌─────────────────────────────────────────────────────────────────┐
+│ COMPARISON WITH OTHER ENDPOINTS                                 │
+└─────────────────────────────────────────────────────────────────┘
+
+/api/video/analyze              ← Use for recorded videos
+  Input: Video file
+  Output: Timeline + summary
+  Speed: Slow (processes entire video)
+  Use: CCTV recordings, mobile uploads
+
+/api/behavior/detect-from-video ← Use for live frames
+  Input: Single image frame
+  Output: Behaviors in that frame
+  Speed: Fast (~30ms)
+  Use: Live CCTV feeds, real-time monitoring
+
+/api/disease/detect             ← Use for single diagnosis
+  Input: Single image
+  Output: Disease + confidence
+  Speed: Fast (~150ms)
+  Use: One-time diagnosis, quick checks
+
+========================================
+📝 Last Updated: January 3, 2026
+🔢 API Version: 1.1
+========================================
+"""

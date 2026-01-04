@@ -1,12 +1,13 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import pandas as pd
 import joblib
-
 
 MODEL_PATH = "multi_output_nutrition_model.pkl"
 model = joblib.load(MODEL_PATH)
 
 app = Flask(__name__)
+CORS(app)
 
 
 @app.route("/", methods=["GET"])
@@ -21,7 +22,7 @@ def home():
     })
 
 
-@app.route("/predict", methods=["POST"])
+@app.route("/nutrition/predict", methods=["POST"])
 def predict():
     try:
         data = request.get_json()

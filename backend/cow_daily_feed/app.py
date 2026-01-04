@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 import tensorflow as tf
 from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
@@ -9,6 +10,7 @@ import joblib
 import os
 
 app = Flask(__name__)
+CORS(app)
 
 
 def dice_coef(y_true, y_pred, smooth=1e-6):
@@ -49,7 +51,7 @@ def process_image(img_path):
     return np.expand_dims(img_array, axis=0)
 
 
-@app.route("/predict", methods=["POST"])
+@app.route("/cow-feed/predict-from-image", methods=["POST"])
 def predict_from_image():
     try:
         # ---------- Image ----------
@@ -112,7 +114,7 @@ def predict_from_image():
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/predict_manual", methods=["POST"])
+@app.route("/cow-feed/predict-manual", methods=["POST"])
 def predict_manual():
     try:
         data = request.get_json()

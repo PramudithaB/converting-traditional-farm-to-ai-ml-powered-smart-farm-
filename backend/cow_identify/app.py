@@ -1,4 +1,5 @@
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from ultralytics import YOLO
 import cv2
 import numpy as np
@@ -6,6 +7,7 @@ import os
 from PIL import Image
 
 app = Flask(__name__)
+CORS(app)
 
 MODEL_PATH = "best.pt"
 model = YOLO(MODEL_PATH)
@@ -13,7 +15,7 @@ model = YOLO(MODEL_PATH)
 UPLOAD_FOLDER = "uploads"
 os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
-@app.route("/predict", methods=["POST"])
+@app.route("/cow-identify/detect", methods=["POST"])
 def predict():
     if "image" not in request.files:
         return jsonify({"error": "No image file provided"}), 400
