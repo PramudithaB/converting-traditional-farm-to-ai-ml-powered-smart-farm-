@@ -104,6 +104,8 @@ try:
     print("✓ Nutrition model loaded")
 except Exception as e:
     print(f"✗ Nutrition model failed: {e}")
+    print("⚠️  Note: If you see sklearn version errors, the model may need to be retrained with your current sklearn version")
+    print("⚠️  Run: pip install scikit-learn==1.6.1  OR retrain the model")
     nutrition_model = None
 
 # ==================== Cow Daily Feed Models ====================
