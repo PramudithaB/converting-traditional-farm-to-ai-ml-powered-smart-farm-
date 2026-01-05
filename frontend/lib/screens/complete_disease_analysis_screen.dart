@@ -53,7 +53,11 @@ class _CompleteDiseaseAnalysisScreenState extends State<CompleteDiseaseAnalysisS
     });
 
     try {
-      final result = await ApiService.analyzeCattleDisease(
+      // First, run both models to get disease comparison
+      final comparisonResult = await ApiService.detectDiseaseWithComparison(_selectedImage!);
+      
+      // Then get full analysis with severity and treatment
+      final fullAnalysis = await ApiService.analyzeCattleDisease(
         imageFile: _selectedImage!,
         weight: _weight,
         age: _age,
@@ -61,8 +65,37 @@ class _CompleteDiseaseAnalysisScreenState extends State<CompleteDiseaseAnalysisS
         previousDisease: _previousDisease,
       );
       
+      // Merge results: Use winning disease from comparison, but keep severity/treatment from full analysis
+      final densenet = comparisonResult['densenet'] as Map<String, dynamic>?;
+      final yolo = comparisonResult['yolo'] as Map<String, dynamic>?;
+      
+      final densenetConfidence = (densenet?['confidence'] as num?)?.toDouble() ?? 0.0;
+      final yoloConfidence = (yolo?['confidence'] as num?)?.toDouble() ?? 0.0;
+      
+      // Determine winner
+      final useDensenet = densenetConfidence >= yoloConfidence;
+      final winningModel = useDensenet ? 'DenseNet121' : 'YOLOv8x';
+      final winningDisease = useDensenet 
+          ? (densenet?['disease'] as String?) 
+          : (yolo?['disease'] as String?);
+      final winningConfidence = useDensenet ? densenetConfidence : yoloConfidence;
+      
+      // Create combined result
+      final combinedResult = {
+        ...fullAnalysis,
+        'disease': {
+          'name': winningDisease,
+          'confidence': winningConfidence,
+        },
+        'model_comparison': {
+          'winning_model': winningModel,
+          'densenet_confidence': densenetConfidence,
+          'yolo_confidence': yoloConfidence,
+        },
+      };
+      
       setState(() {
-        _analysisResult = result;
+        _analysisResult = combinedResult;
         _isAnalyzing = false;
       });
     } catch (e) {
@@ -270,10 +303,53 @@ class _CompleteDiseaseAnalysisScreenState extends State<CompleteDiseaseAnalysisS
     final severity = _analysisResult!['severity'] as Map<String, dynamic>?;
     final treatment = _analysisResult!['treatment'] as Map<String, dynamic>?;
     final clinicalData = _analysisResult!['clinical_data'] as Map<String, dynamic>?;
+    final modelComparison = _analysisResult!['model_comparison'] as Map<String, dynamic>?;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        // Model Comparison Card
+        if (modelComparison != null) ...[
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.blue[50],
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.blue[300]!, width: 2),
+            ),
+            padding: const EdgeInsets.all(16),
+            margin: const EdgeInsets.only(bottom: 16),
+            child: Row(
+              children: [
+                Icon(Icons.compare_arrows, color: Colors.blue[700], size: 28),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '🏆 Highest Confidence Model: ${modelComparison['winning_model']}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.blue[900],
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'DenseNet: ${(modelComparison['densenet_confidence'] * 100).toStringAsFixed(1)}%  |  YOLO: ${(modelComparison['yolo_confidence'] * 100).toStringAsFixed(1)}%',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: Colors.blue[700],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+
         // Disease Detection Card
         Card(
           elevation: 4,
