@@ -345,6 +345,40 @@ class ApiService {
     }
   }
 
+  // Analyze complete video with behavior and disease detection
+  static Future<Map<String, dynamic>> analyzeVideo({
+    required File videoFile,
+    int frameInterval = 30,
+    bool detectDisease = true,
+    bool detectBehavior = true,
+  }) async {
+    try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/video/analyze'),
+      );
+      
+      request.files.add(
+        await http.MultipartFile.fromPath('video', videoFile.path),
+      );
+      
+      request.fields['frame_interval'] = frameInterval.toString();
+      request.fields['detect_disease'] = detectDisease.toString();
+      request.fields['detect_behavior'] = detectBehavior.toString();
+
+      var streamedResponse = await request.send().timeout(Duration(minutes: 5));
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Video analysis failed: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Video analysis failed: $e');
+    }
+  }
+
   // Quick YOLO diagnosis
   static Future<Map<String, dynamic>> quickDiagnosis(File imageFile) async {
     try {
@@ -392,40 +426,6 @@ class ApiService {
       }
     } catch (e) {
       throw Exception('Behavior detection failed: $e');
-    }
-  }
-
-  // Analyze complete video file
-  static Future<Map<String, dynamic>> analyzeVideo({
-    required File videoFile,
-    int frameInterval = 30,
-    bool detectDisease = true,
-    bool detectBehavior = true,
-  }) async {
-    try {
-      var request = http.MultipartRequest(
-        'POST',
-        Uri.parse('$baseUrl/api/video/analyze'),
-      );
-      
-      request.files.add(
-        await http.MultipartFile.fromPath('video', videoFile.path),
-      );
-      
-      request.fields['frame_interval'] = frameInterval.toString();
-      request.fields['detect_disease'] = detectDisease.toString();
-      request.fields['detect_behavior'] = detectBehavior.toString();
-
-      var streamedResponse = await request.send().timeout(Duration(minutes: 5));
-      var response = await http.Response.fromStream(streamedResponse);
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else {
-        throw Exception('Video analysis failed: ${response.body}');
-      }
-    } catch (e) {
-      throw Exception('Video analysis failed: $e');
     }
   }
 }
