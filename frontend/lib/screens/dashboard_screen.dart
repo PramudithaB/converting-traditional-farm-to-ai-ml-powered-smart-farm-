@@ -5,12 +5,14 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../db/app_db.dart';
 import 'add_cow_screen.dart';
 import 'login_screen.dart';
-// New pages
+// AI Service Screens
+import 'animal_birth_screen.dart';
 import 'hatching.dart';
 import 'market.dart';
 import 'feed.dart';
 import 'identico.dart';
 import 'disease_detection_screen.dart';
+import 'nutrition_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   static const routeName = '/dashboard';
@@ -225,24 +227,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverList.list(
               children: [
-                _componentCard('Birth & Hatching', Icons.catching_pokemon, () {
+                _componentCard('Animal Birth Prediction', Icons.pregnant_woman, () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const AnimalBirthScreen()));
+                }),
+                const SizedBox(height: 12),
+                _componentCard('Egg Hatching Predictor', Icons.egg, () {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const HatchingScreen()));
                 }),
                 const SizedBox(height: 12),
-                _componentCard('Market Analyze', Icons.show_chart, () {
+                _componentCard('Milk Market Analyzer', Icons.show_chart, () {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const MarketScreen()));
                 }),
                 const SizedBox(height: 12),
-                _componentCard('Feed Predictor', Icons.restaurant, () {
+                _componentCard('Cow Feed Calculator', Icons.restaurant, () {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const FeedScreen()));
                 }),
                 const SizedBox(height: 12),
-                _componentCard('Identify Cow', Icons.qr_code_scanner, () {
+                _componentCard('Cow Identifier', Icons.qr_code_scanner, () {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const IdenticoScreen()));
                 }),
                 const SizedBox(height: 12),
                 _componentCard('Disease Detection', Icons.medical_services, () {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const DiseaseDetectionScreen()));
+                }),
+                const SizedBox(height: 12),
+                _componentCard('Nutrition Advisor', Icons.local_dining, () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const NutritionScreen()));
                 }),
               ],
             ),

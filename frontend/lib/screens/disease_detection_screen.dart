@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
+import '../services/api_service.dart';
 
 class DiseaseDetectionScreen extends StatefulWidget {
   const DiseaseDetectionScreen({super.key});
@@ -45,31 +46,27 @@ class _DiseaseDetectionScreenState extends State<DiseaseDetectionScreen> {
       _isAnalyzing = true;
     });
 
-    // Simulate AI analysis (replace with actual ML model integration)
-    await Future.delayed(const Duration(seconds: 2));
-
-    // Mock result - replace with actual disease detection logic
-    setState(() {
-      _analysisResult = {
-        'disease': 'Foot and Mouth Disease',
-        'confidence': 0.87,
-        'severity': 'Moderate',
-        'symptoms': [
-          'Blisters on mouth and feet',
-          'Fever and loss of appetite',
-          'Excessive salivation',
-          'Lameness'
-        ],
-        'recommendations': [
-          'Isolate affected cattle immediately',
-          'Contact veterinarian for confirmation',
-          'Ensure proper hygiene and disinfection',
-          'Monitor other cattle for symptoms',
-          'Consider vaccination for herd'
-        ],
-      };
-      _isAnalyzing = false;
-    });
+    try {
+      // Call real backend API
+      final result = await ApiService.detectCattleDisease(_selectedImage!);
+      
+      setState(() {
+        _analysisResult = result;
+        _isAnalyzing = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isAnalyzing = false;
+      });
+      
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Analysis failed: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Widget _buildImagePickerButton(String label, IconData icon, ImageSource source) {

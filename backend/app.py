@@ -83,12 +83,14 @@ except Exception as e:
 # ==================== Egg Hatch Models ====================
 try:
     egg_hatch_scaler = joblib.load("egg_hatch/egg_hatch_scaler.joblib")
-    egg_hatch_nn_model = tf.keras.models.load_model("egg_hatch/egg_hatch_nn.h5")
+    egg_hatch_nn = tf.keras.models.load_model("egg_hatch/egg_hatch_nn.h5")
+    egg_hatch_rf = joblib.load("egg_hatch/egg_hatch_rf_pipeline.joblib")
     print("✓ Egg Hatch models loaded")
 except Exception as e:
     print(f"✗ Egg Hatch models failed: {e}")
     egg_hatch_scaler = None
-    egg_hatch_nn_model = None
+    egg_hatch_nn = None
+    egg_hatch_rf = None
 
 # ==================== Milk Market Models ====================
 try:
@@ -309,7 +311,7 @@ def health():
         "services": {
             "animal_birth": animal_birth_model is not None,
             "cow_identify": cow_identify_model is not None,
-            "egg_hatch": egg_hatch_nn_model is not None,
+            "egg_hatch": egg_hatch_nn is not None and egg_hatch_rf is not None,
             "milk_market": milk_market_model is not None,
             "nutrition": nutrition_model is not None,
             "cow_feed": cow_feed_model is not None,
@@ -483,7 +485,7 @@ def predict_cow_feed_manual():
 # ==================== Egg Hatch Prediction ====================
 @app.route("/egg-hatch/predict", methods=["POST"])
 def predict_egg_hatch():
-    if egg_hatch_nn_model is None:
+    if egg_hatch_nn is None or egg_hatch_rf is None:
         return jsonify({"error": "Egg hatch model not loaded"}), 503
     
     try:
@@ -498,7 +500,7 @@ def predict_egg_hatch():
         }])
         
         scaled = egg_hatch_scaler.transform(df)
-        prob = float(egg_hatch_nn_model.predict(scaled)[0][0])
+        prob = float(egg_hatch_nn.predict(scaled, verbose=0)[0][0])
         pred = 1 if prob >= 0.5 else 0
         
         return jsonify({
