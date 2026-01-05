@@ -231,7 +231,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverList.list(
               children: [
-                _componentCard('Animal Birth Prediction', Icons.pregnant_woman, () {
+                _componentCard('Animal Birth Prediction', Icons.pets_outlined, () {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const AnimalBirthScreen()));
                 }),
                 const SizedBox(height: 12),
