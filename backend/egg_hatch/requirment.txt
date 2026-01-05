@@ -1,6 +1,1 @@
-flask
-flask-cors
-tensorflow
-joblib
-pandas
-scikit-learn
+pip install flask tensorflow joblib pandas scikit-learn
