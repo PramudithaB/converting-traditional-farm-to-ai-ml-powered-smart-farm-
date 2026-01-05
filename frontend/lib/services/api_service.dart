@@ -281,10 +281,41 @@ class ApiService {
     }
   }
 
+  // Detect disease with both DenseNet and YOLO for model comparison
+  static Future<Map<String, dynamic>> detectDiseaseWithComparison(File imageFile) async {
+    try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/disease/detect'),
+      );
+      
+      request.files.add(
+        await http.MultipartFile.fromPath('image', imageFile.path),
+      );
+      
+      // Add use_yolo parameter to get both model results
+      request.fields['use_yolo'] = 'true';
+
+      var streamedResponse = await request.send().timeout(timeout);
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Detection failed: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Disease detection failed: $e');
+    }
+  }
+
+  // Complete disease analysis with severity and treatment
   static Future<Map<String, dynamic>> analyzeCattleDisease({
     required File imageFile,
-    required String diseaseType,
-    required Map<String, dynamic> symptoms,
+    double? weight,
+    double? age,
+    double? temperature,
+    String? previousDisease,
   }) async {
     try {
       var request = http.MultipartRequest(
@@ -296,10 +327,12 @@ class ApiService {
         await http.MultipartFile.fromPath('image', imageFile.path),
       );
       
-      request.fields['disease_type'] = diseaseType;
-      request.fields['symptoms'] = json.encode(symptoms);
+      if (weight != null) request.fields['weight'] = weight.toString();
+      if (age != null) request.fields['age'] = age.toString();
+      if (temperature != null) request.fields['temperature'] = temperature.toString();
+      if (previousDisease != null) request.fields['previous_disease'] = previousDisease;
 
-      var streamedResponse = await request.send().timeout(timeout);
+      var streamedResponse = await request.send().timeout(Duration(seconds: 60));
       var response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
@@ -312,32 +345,12 @@ class ApiService {
     }
   }
 
-  static Future<Map<String, dynamic>> quickDiagnosis({
-    required Map<String, dynamic> symptoms,
-  }) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/api/quick-diagnosis'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'symptoms': symptoms}),
-      ).timeout(timeout);
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else {
-        throw Exception('Diagnosis failed: ${response.body}');
-      }
-    } catch (e) {
-      throw Exception('Quick diagnosis failed: $e');
-    }
-  }
-
-  // ==================== Cattle Behavior Analysis ====================
-  static Future<Map<String, dynamic>> analyzeBehaviorSnapshot(File imageFile) async {
+  // Quick YOLO diagnosis
+  static Future<Map<String, dynamic>> quickDiagnosis(File imageFile) async {
     try {
       var request = http.MultipartRequest(
         'POST',
-        Uri.parse('$baseUrl/api/behavior/snapshot'),
+        Uri.parse('$baseUrl/api/quick-diagnosis'),
       );
       
       request.files.add(
@@ -350,30 +363,15 @@ class ApiService {
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
-        throw Exception('Analysis failed: ${response.body}');
+        throw Exception('Quick diagnosis failed: ${response.body}');
       }
     } catch (e) {
-      throw Exception('Behavior snapshot analysis failed: $e');
+      throw Exception('Quick diagnosis failed: $e');
     }
   }
 
-  static Future<Map<String, dynamic>> analyzeBehaviorHistory(String cowId) async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/behavior/analyze/$cowId'),
-      ).timeout(timeout);
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else {
-        throw Exception('Analysis failed: ${response.body}');
-      }
-    } catch (e) {
-      throw Exception('Behavior history analysis failed: $e');
-    }
-  }
-
-  static Future<Map<String, dynamic>> detectBehaviorFromVideo(File videoFile) async {
+  // Detect behavior from image/video frame
+  static Future<Map<String, dynamic>> detectBehaviorFromVideo(File imageFile) async {
     try {
       var request = http.MultipartRequest(
         'POST',
@@ -381,8 +379,42 @@ class ApiService {
       );
       
       request.files.add(
+        await http.MultipartFile.fromPath('image', imageFile.path),
+      );
+
+      var streamedResponse = await request.send().timeout(timeout);
+      var response = await http.Response.fromStream(streamedResponse);
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Behavior detection failed: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('Behavior detection failed: $e');
+    }
+  }
+
+  // Analyze complete video file
+  static Future<Map<String, dynamic>> analyzeVideo({
+    required File videoFile,
+    int frameInterval = 30,
+    bool detectDisease = true,
+    bool detectBehavior = true,
+  }) async {
+    try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$baseUrl/api/video/analyze'),
+      );
+      
+      request.files.add(
         await http.MultipartFile.fromPath('video', videoFile.path),
       );
+      
+      request.fields['frame_interval'] = frameInterval.toString();
+      request.fields['detect_disease'] = detectDisease.toString();
+      request.fields['detect_behavior'] = detectBehavior.toString();
 
       var streamedResponse = await request.send().timeout(Duration(minutes: 5));
       var response = await http.Response.fromStream(streamedResponse);
@@ -390,27 +422,10 @@ class ApiService {
       if (response.statusCode == 200) {
         return json.decode(response.body);
       } else {
-        throw Exception('Detection failed: ${response.body}');
+        throw Exception('Video analysis failed: ${response.body}');
       }
     } catch (e) {
-      throw Exception('Behavior video detection failed: $e');
-    }
-  }
-
-  // ==================== Model Status ====================
-  static Future<Map<String, dynamic>> getModelStatus() async {
-    try {
-      final response = await http.get(
-        Uri.parse('$baseUrl/api/models/status'),
-      ).timeout(timeout);
-
-      if (response.statusCode == 200) {
-        return json.decode(response.body);
-      } else {
-        throw Exception('Failed to get model status: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Model status check failed: $e');
+      throw Exception('Video analysis failed: $e');
     }
   }
 }

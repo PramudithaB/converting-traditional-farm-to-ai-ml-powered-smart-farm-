@@ -47,8 +47,8 @@ class _DiseaseDetectionScreenState extends State<DiseaseDetectionScreen> {
     });
 
     try {
-      // Call real backend API
-      final result = await ApiService.detectCattleDisease(_selectedImage!);
+      // Call real backend API with BOTH models
+      final result = await ApiService.detectDiseaseWithComparison(_selectedImage!);
       
       setState(() {
         _analysisResult = result;
@@ -226,137 +226,176 @@ class _DiseaseDetectionScreenState extends State<DiseaseDetectionScreen> {
     if (_analysisResult == null) return const SizedBox.shrink();
 
     final cs = Theme.of(context).colorScheme;
-    final disease = _analysisResult!['disease'] as String;
-    final confidence = _analysisResult!['confidence'] as double;
-    final severity = _analysisResult!['severity'] as String;
-    final symptoms = _analysisResult!['symptoms'] as List<String>;
-    final recommendations = _analysisResult!['recommendations'] as List<String>;
-
-    Color severityColor = Colors.orange;
-    if (severity == 'High' || severity == 'Severe') {
-      severityColor = Colors.red;
-    } else if (severity == 'Low') {
-      severityColor = Colors.green;
+    
+    // Extract both model results
+    final densenet = _analysisResult!['densenet'] as Map<String, dynamic>?;
+    final yolo = _analysisResult!['yolo'] as Map<String, dynamic>?;
+    
+    // Get confidences
+    final densenetConfidence = (densenet?['confidence'] as num?)?.toDouble() ?? 0.0;
+    final yoloConfidence = (yolo?['confidence'] as num?)?.toDouble() ?? 0.0;
+    
+    // Determine which model has highest confidence
+    final useDensenet = densenetConfidence >= yoloConfidence;
+    final winningModel = useDensenet ? 'DenseNet121' : 'YOLOv8x';
+    final disease = useDensenet 
+        ? (densenet?['disease'] as String? ?? 'Unknown')
+        : (yolo?['disease'] as String? ?? 'Unknown');
+    final confidence = useDensenet ? densenetConfidence : yoloConfidence;
+    
+    // Extract all predictions from the winning model
+    final allPredictions = useDensenet 
+        ? (densenet?['all_predictions'] as Map<String, dynamic>?)
+        : null; // YOLO doesn't provide all predictions, only top result
+    
+    Color confidenceColor = Colors.green;
+    if (confidence < 0.5) {
+      confidenceColor = Colors.red;
+    } else if (confidence < 0.8) {
+      confidenceColor = Colors.orange;
     }
 
-    return Container(
-      decoration: BoxDecoration(
-        color: cs.errorContainer,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: cs.error.withOpacity(0.3), width: 2),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
+    return Column(
+      children: [
+        // Model comparison info
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.blue[50],
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: Colors.blue[300]!, width: 2),
+          ),
+          padding: const EdgeInsets.all(12),
+          margin: const EdgeInsets.only(bottom: 16),
+          child: Row(
             children: [
-              Icon(Icons.bug_report, color: cs.error, size: 32),
-              const SizedBox(width: 12),
+              Icon(Icons.compare_arrows, color: Colors.blue[700]),
+              const SizedBox(width: 8),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      disease,
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: cs.onErrorContainer,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      '🏆 Highest Confidence Model: $winningModel',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blue[900],
+                        fontSize: 13,
+                      ),
                     ),
                     const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: severityColor.withOpacity(0.2),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Text(
-                            severity,
-                            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                                  color: severityColor,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Confidence: ${(confidence * 100).toStringAsFixed(1)}%',
-                          style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                                color: cs.onErrorContainer.withOpacity(0.8),
-                              ),
-                        ),
-                      ],
+                    Text(
+                      'DenseNet: ${(densenetConfidence * 100).toStringAsFixed(1)}%  |  YOLO: ${(yoloConfidence * 100).toStringAsFixed(1)}%',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue[700],
+                      ),
                     ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
-          const Divider(),
-          const SizedBox(height: 12),
-          Text(
-            'Observed Symptoms:',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: cs.onErrorContainer,
-                  fontWeight: FontWeight.bold,
-                ),
+        ),
+        
+        // Main result card
+        Container(
+          decoration: BoxDecoration(
+            color: cs.errorContainer,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: cs.error.withOpacity(0.3), width: 2),
           ),
-          const SizedBox(height: 8),
-          ...symptoms.map((symptom) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
                 children: [
-                  Icon(Icons.circle, size: 8, color: cs.error),
-                  const SizedBox(width: 8),
+                  Icon(Icons.bug_report, color: cs.error, size: 32),
+                  const SizedBox(width: 12),
                   Expanded(
-                    child: Text(
-                      symptom,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: cs.onErrorContainer,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          disease,
+                          style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                color: cs.onErrorContainer,
+                                fontWeight: FontWeight.bold,
+                              ),
+                        ),
+                        const SizedBox(height: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: confidenceColor.withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
                           ),
+                          child: Text(
+                            'Confidence: ${(confidence * 100).toStringAsFixed(2)}%',
+                            style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                                  color: confidenceColor,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
               ),
-            );
-          }).toList(),
-          const SizedBox(height: 16),
-          Text(
-            'Recommendations:',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: cs.onErrorContainer,
-                  fontWeight: FontWeight.bold,
+              if (allPredictions != null && allPredictions.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                const Divider(),
+                const SizedBox(height: 12),
+                Text(
+                  'All Predictions ($winningModel Model):',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: cs.onErrorContainer,
+                        fontWeight: FontWeight.bold,
+                      ),
                 ),
-          ),
-          const SizedBox(height: 8),
-          ...recommendations.map((rec) {
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.check_circle, size: 16, color: Colors.green),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      rec,
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: cs.onErrorContainer,
+                const SizedBox(height: 8),
+                ...allPredictions.entries.map((entry) {
+                  final prob = (entry.value as num).toDouble();
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 8),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              entry.key,
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    color: cs.onErrorContainer,
+                                  ),
+                            ),
+                            Text(
+                              '${(prob * 100).toStringAsFixed(2)}%',
+                              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    color: cs.onErrorContainer.withOpacity(0.7),
+                                  ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        LinearProgressIndicator(
+                          value: prob,
+                          backgroundColor: cs.onErrorContainer.withOpacity(0.2),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            prob > 0.7 ? Colors.red : prob > 0.4 ? Colors.orange : Colors.green,
                           ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-        ],
-      ),
+                  );
+                }).toList(),
+              ],
+            ],
+          ),
+        ),
+      ],
     );
   }
 
