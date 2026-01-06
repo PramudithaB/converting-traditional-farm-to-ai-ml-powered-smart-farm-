@@ -15,6 +15,7 @@ import 'disease_detection_screen.dart';
 import 'complete_disease_analysis_screen.dart';
 import 'behavior_detection_screen.dart';
 import 'model_comparison_screen.dart';
+import 'video_analysis_screen.dart';
 import 'nutrition_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -230,7 +231,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverList.list(
               children: [
-                _componentCard('Animal Birth Prediction', Icons.pregnant_woman, () {
+                _componentCard('Animal Birth Prediction', Icons.pets_outlined, () {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const AnimalBirthScreen()));
                 }),
                 const SizedBox(height: 12),
@@ -264,6 +265,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(height: 12),
                 _componentCard('Behavior Detection', Icons.pets, () {
                   Navigator.push(context, MaterialPageRoute(builder: (_) => const BehaviorDetectionScreen()));
+                }),
+                const SizedBox(height: 12),
+                _componentCard('Video Analysis', Icons.video_library, () {
+                  Navigator.push(context, MaterialPageRoute(builder: (_) => const VideoAnalysisScreen()));
                 }),
                 const SizedBox(height: 12),
                 _componentCard('Nutrition Advisor', Icons.local_dining, () {

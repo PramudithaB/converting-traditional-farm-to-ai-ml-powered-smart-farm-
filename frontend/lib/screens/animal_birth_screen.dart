@@ -87,7 +87,7 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
-                    Icon(Icons.pregnant_woman, size: 48, color: cs.onPrimaryContainer),
+                    Icon(Icons.pets_outlined, size: 48, color: cs.onPrimaryContainer),
                     const SizedBox(height: 12),
                     Text(
                       'Predict Birth Timing',
@@ -225,11 +225,11 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
                           _result!['Will Birth in Next 2 Days'] ?? 'N/A',
                           cs,
                         ),
-                        _buildResultItem(
-                          'Estimated Days to Birth',
-                          '${_result!['Estimated Days to Birth'] ?? 'N/A'} days',
-                          cs,
-                        ),
+                        // _buildResultItem(
+                        //   'Estimated Days to Birth',
+                        //   '${_result!['Estimated Days to Birth'] ?? 'N/A'} days',
+                        //   cs,
+                        // ),
                       ],
                     ),
                   ),

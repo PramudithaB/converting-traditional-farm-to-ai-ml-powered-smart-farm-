@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:image_picker/image_picker.dart';
 import '../services/api_service.dart';
 
 class FeedScreen extends StatefulWidget {
@@ -10,7 +12,11 @@ class FeedScreen extends StatefulWidget {
 
 class _FeedScreenState extends State<FeedScreen> {
   final _formKey = GlobalKey<FormState>();
+  final _picker = ImagePicker();
+  
   bool _isCalculating = false;
+  bool _useImageMode = false;
+  File? _selectedImage;
   Map<String, dynamic>? _result;
 
   String _breed = 'Holstein';
@@ -30,8 +36,74 @@ class _FeedScreenState extends State<FeedScreen> {
 
   final List<String> _activityLevels = ['Low', 'Medium', 'High'];
 
+  Future<void> _pickImage(ImageSource source) async {
+    try {
+      final XFile? pickedFile = await _picker.pickImage(
+        source: source,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+
+      if (pickedFile != null) {
+        setState(() {
+          _selectedImage = File(pickedFile.path);
+          _result = null;
+        });
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error picking image: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  void _showImageSourceDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Select Image Source'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt),
+              title: const Text('Camera'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.camera);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Gallery'),
+              onTap: () {
+                Navigator.pop(context);
+                _pickImage(ImageSource.gallery);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _calculateFeed() async {
     if (!_formKey.currentState!.validate()) return;
+
+    if (_useImageMode && _selectedImage == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please select a cow image first'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
 
     setState(() {
       _isCalculating = true;
@@ -39,13 +111,25 @@ class _FeedScreenState extends State<FeedScreen> {
     });
 
     try {
-      final response = await ApiService.predictCowFeedManual(
-        breed: _breed,
-        age: _age,
-        weight: _weight,
-        milkYield: _milkYield,
-        activity: _activity,
-      );
+      Map<String, dynamic> response;
+      
+      if (_useImageMode) {
+        response = await ApiService.predictCowFeedFromImage(
+          _selectedImage!,
+          breed: _breed,
+          age: _age,
+          milkYield: _milkYield,
+          activity: _activity,
+        );
+      } else {
+        response = await ApiService.predictCowFeedManual(
+          breed: _breed,
+          age: _age,
+          weight: _weight,
+          milkYield: _milkYield,
+          activity: _activity,
+        );
+      }
 
       setState(() {
         _result = response;
@@ -116,6 +200,109 @@ class _FeedScreenState extends State<FeedScreen> {
               ),
               const SizedBox(height: 24),
               
+              // Mode Toggle
+              Card(
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          'Prediction Mode',
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                      ),
+                      SegmentedButton<bool>(
+                        segments: const [
+                          ButtonSegment(
+                            value: false,
+                            label: Text('Manual'),
+                            icon: Icon(Icons.edit),
+                          ),
+                          ButtonSegment(
+                            value: true,
+                            label: Text('Image'),
+                            icon: Icon(Icons.camera_alt),
+                          ),
+                        ],
+                        selected: {_useImageMode},
+                        onSelectionChanged: (Set<bool> newSelection) {
+                          setState(() {
+                            _useImageMode = newSelection.first;
+                            _result = null;
+                            _selectedImage = null;
+                          });
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              
+              // Image Selection (only in image mode)
+              if (_useImageMode) ...[
+                if (_selectedImage != null)
+                  Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    clipBehavior: Clip.antiAlias,
+                    child: Column(
+                      children: [
+                        Image.file(
+                          _selectedImage!,
+                          height: 200,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(8),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                            children: [
+                              TextButton.icon(
+                                onPressed: _showImageSourceDialog,
+                                icon: const Icon(Icons.change_circle),
+                                label: const Text('Change Image'),
+                              ),
+                              TextButton.icon(
+                                onPressed: () {
+                                  setState(() {
+                                    _selectedImage = null;
+                                    _result = null;
+                                  });
+                                },
+                                icon: const Icon(Icons.delete),
+                                label: const Text('Remove'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.red,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+                else
+                  OutlinedButton.icon(
+                    onPressed: _showImageSourceDialog,
+                    icon: const Icon(Icons.add_photo_alternate, size: 32),
+                    label: const Text('Select Cow Image'),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 40),
+                      side: BorderSide(color: cs.outline, width: 2),
+                    ),
+                  ),
+                const SizedBox(height: 24),
+              ],
+              
               // Breed
               Text(
                 'Breed',
@@ -138,20 +325,22 @@ class _FeedScreenState extends State<FeedScreen> {
               ),
               const SizedBox(height: 16),
               
-              // Weight
-              Text(
-                'Body Weight: ${_weight.toStringAsFixed(0)} kg',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              Slider(
-                value: _weight,
-                min: 300,
-                max: 1000,
-                divisions: 70,
-                label: '${_weight.toStringAsFixed(0)}kg',
-                onChanged: (value) => setState(() => _weight = value),
-              ),
-              const SizedBox(height: 16),
+              // Weight (only in manual mode)
+              if (!_useImageMode) ...[
+                Text(
+                  'Body Weight: ${_weight.toStringAsFixed(0)} kg',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                Slider(
+                  value: _weight,
+                  min: 300,
+                  max: 1000,
+                  divisions: 70,
+                  label: '${_weight.toStringAsFixed(0)}kg',
+                  onChanged: (value) => setState(() => _weight = value),
+                ),
+                const SizedBox(height: 16),
+              ],
               
               // Age
               Text(
@@ -245,6 +434,13 @@ class _FeedScreenState extends State<FeedScreen> {
                           ],
                         ),
                         const Divider(height: 24),
+                        if (_useImageMode && _result!['cow_weight_kg'] != null)
+                          _buildFeedItem(
+                            'Detected Weight',
+                            '${_result!['cow_weight_kg']} kg',
+                            Icons.monitor_weight,
+                            cs,
+                          ),
                         _buildFeedItem(
                           'Daily Feed Required',
                           '${_result!['daily_feed_kg'] ?? 'N/A'} kg/day',
