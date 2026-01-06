@@ -923,7 +923,7 @@ This project is developed as part of a Final Year Research Project. All rights r
 
 For queries regarding this project, please open an issue in the repository.
 
-**Repository:** [Converting Traditional Farm to AI/ML Powered Smart Farm](https://github.com/your-repo/converting-traditional-farm-to-ai-ml-powered-smart-farm-)
+**Repository:** [Converting Traditional Farm to AI/ML Powered Smart Farm](https://github.com/PramudithaB/converting-traditional-farm-to-ai-ml-powered-smart-farm-)
 
 ---
 
