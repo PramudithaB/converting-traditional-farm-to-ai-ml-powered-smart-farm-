@@ -139,7 +139,7 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
               const SizedBox(height: 16),
               
               Text(
-                'Gestation Day: $_gestationDay',
+                'Milk Yield: $_gestationDay',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               Slider(
@@ -153,7 +153,7 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
               const SizedBox(height: 16),
               
               Text(
-                'Udder Size: ${_udderSize.toStringAsFixed(1)}/10',
+                'Parity: ${_udderSize.toStringAsFixed(1)}/10',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               Slider(
@@ -167,13 +167,13 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
               const SizedBox(height: 16),
               
               Text(
-                'Appetite Level: ${_appetiteLevel.toStringAsFixed(1)}/10',
+                'Age Months: ${_appetiteLevel.toStringAsFixed(1)}/400',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               Slider(
                 value: _appetiteLevel,
-                min: 1,
-                max: 10,
+                min: 5,
+                max: 400,
                 divisions: 9,
                 label: _appetiteLevel.toStringAsFixed(1),
                 onChanged: (value) => setState(() => _appetiteLevel = value),
