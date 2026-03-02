@@ -1,6 +1,6 @@
 # AI-Powered Smart Farm Management System for Cattle
 
-## Converting Traditional Farm to AI/ML Powered Smart Farm
+## Converting Tradional Farm to AI/ML Powered Smart Farm
 
 **Final Year Research Project 2025/2026**
 
@@ -27,7 +27,7 @@
 
 ## Project Overview
 
-This Final Year Research Project focuses on modernizing traditional cattle farming through **Artificial Intelligence** and **Machine Learning** technologies. The system provides comprehensive farm management capabilities including automated feeding, disease detection, health monitoring, and market prediction.
+This Final Year Research Project focuses on modernizing traditional cattle farming through **Artificial Intelligence** and **Machine Learning** technologies. The system provides comprehensive farm management capabilities including automated feeding, disease detection, health monitoring,Animal birth and egg hatch prediction, and market prediction.
 
 ### Problem Statement
 Traditional cattle farming faces challenges in:

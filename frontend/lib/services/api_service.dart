@@ -4,9 +4,9 @@ import 'package:http/http.dart' as http;
 
 class ApiService {
   // Base URL - Use 10.0.2.2 for Android Emulator to access host machine
-  // For physical device or web, use your actual IP address
-  // Change this to your computer's local IP address when using a physical device
-  static const String baseUrl = 'http://192.168.8.100:5000';
+  // For physical device, use your computer's IP address (e.g., 192.168.8.100)
+  // For web (Chrome), use localhost
+  static const String baseUrl = 'http://10.0.2.2:5000';
   
   // Timeouts
   static const Duration timeout = Duration(seconds: 30);
