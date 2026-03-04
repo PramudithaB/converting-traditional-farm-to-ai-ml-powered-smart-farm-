@@ -2,7 +2,7 @@ import 'dart:io';
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../db/app_db.dart';
+import '../api/cow_api.dart';
 
 class AddCowScreen extends StatefulWidget {
   static const routeName = '/add-cow';
@@ -52,14 +52,20 @@ class _AddCowScreenState extends State<AddCowScreen> {
 
   Future<void> _saveCow() async {
     if (!_formKey.currentState!.validate()) return;
+    if (_imageFile == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please add a cow image (required for identification)')),
+      );
+      return;
+    }
     setState(() => _saving = true);
     try {
-      await AppDb.instance.addCow(
+      await CowApi.storeCow(
         cowId: _cowIdCtrl.text.trim(),
         name: _nameCtrl.text.trim(),
+        imageFile: _imageFile!,
         breed: _breedCtrl.text.trim(),
         lactationMonth: int.parse(_lmCtrl.text.trim()),
-        imagePath: _imageFile?.path,
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

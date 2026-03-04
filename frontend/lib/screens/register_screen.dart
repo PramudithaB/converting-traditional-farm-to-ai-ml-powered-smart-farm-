@@ -1,6 +1,6 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
-import '../db/app_db.dart';
+import '../api/auth_api.dart';
 
 class RegisterScreen extends StatefulWidget {
   static const routeName = '/register';
@@ -27,19 +27,17 @@ class _RegisterScreenState extends State<RegisterScreen> {
       _error = null;
     });
     try {
-      await AppDb.instance.registerUser(
+      await AuthApi.register(
         name: _nameCtrl.text.trim(),
-        username: _usernameCtrl.text.trim(),
         email: _emailCtrl.text.trim(),
         password: _passwordCtrl.text.trim(),
-        mobile: _mobileCtrl.text.trim(),
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context)
           .showSnackBar(const SnackBar(content: Text('Registration successful. Please login.')));
       Navigator.pop(context);
     } catch (e) {
-      setState(() => _error = 'Registration failed: $e');
+      setState(() => _error = e.toString().replaceAll('Exception: ', ''));
     } finally {
       setState(() => _loading = false);
     }

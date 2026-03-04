@@ -1,5 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../api/prediction_api.dart';
 
 class MarketScreen extends StatefulWidget {
   const MarketScreen({super.key});
@@ -46,6 +47,21 @@ class _MarketScreenState extends State<MarketScreen> {
         _result = response;
         _isPredicting = false;
       });
+
+      // Save to smartfarm database
+      PredictionApi.saveMilkMarket(
+        currentPrice: _currentPrice,
+        monthlyMilkLitres: _monthlyMilkLitres,
+        fatPercentage: _fatPercentage,
+        snfPercentage: _snfPercentage,
+        diseaseStage: _diseaseStage,
+        feedQuality: _feedQuality,
+        lactationMonth: _lactationMonth,
+        month: _month,
+        predictedPriceChange: (response['predicted_price_change_lkr_per_litre'] as num).toDouble(),
+        predictedNextPrice: (response['predicted_next_month_price_lkr_per_litre'] as num).toDouble(),
+        predictedNextIncome: (response['predicted_next_month_income_lkr'] as num).toDouble(),
+      ).catchError((e) => debugPrint('Save milk market failed: $e'));
     } catch (e) {
       setState(() {
         _isPredicting = false;

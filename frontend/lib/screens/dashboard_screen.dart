@@ -2,7 +2,7 @@ import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../db/app_db.dart';
+import '../api/cow_api.dart';
 import 'add_cow_screen.dart';
 import 'login_screen.dart';
 // AI Service Screens
@@ -30,22 +30,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
   int _cowCount = 0;
   double _avgLm = 0;
   int _recentBirths = 0;
+  List<Map<String, dynamic>> _cows = [];
 
   Future<void> _loadMetrics() async {
-    final db = AppDb.instance;
-    final cowCount = await db.getCowCount();
-    final avgLm = await db.getAverageLactationMonth();
-    final births = await db.getRecentBirthsCount(days: 30);
-    setState(() {
-      _cowCount = cowCount;
-      _avgLm = avgLm;
-      _recentBirths = births;
-    });
+    try {
+      final cows = await CowApi.getCows();
+      double totalLm = 0;
+      int lmCount = 0;
+      for (final c in cows) {
+        final lm = c['lactation_month'];
+        if (lm != null) {
+          totalLm += (lm is int ? lm.toDouble() : double.tryParse(lm.toString()) ?? 0);
+          lmCount++;
+        }
+      }
+      setState(() {
+        _cows = cows;
+        _cowCount = cows.length;
+        _avgLm = lmCount > 0 ? totalLm / lmCount : 0;
+        _recentBirths = 0; // Births tracked via animal_birth module
+      });
+    } catch (e) {
+      debugPrint('Failed to load metrics: $e');
+    }
   }
 
   Future<void> _logout() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('loggedInUserId');
+    await prefs.remove('authToken');
+    await prefs.remove('userName');
     if (!mounted) return;
     Navigator.pushReplacementNamed(context, LoginScreen.routeName);
   }
@@ -285,17 +299,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Text('Recently Added Cows',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700)),
                 const SizedBox(height: 10),
-                FutureBuilder<List<Map<String, Object?>>>(
-                  future: AppDb.instance.listCows(),
-                  builder: (context, snap) {
-                    if (!snap.hasData) {
-                      return const SizedBox(
-                        height: 120,
-                        child: Center(child: CircularProgressIndicator()),
-                      );
-                    }
-                    final items = snap.data!;
-                    if (items.isEmpty) {
+                Builder(
+                  builder: (context) {
+                    if (_cows.isEmpty) {
                       return const Padding(
                         padding: EdgeInsets.all(12),
                         child: Text('No cows yet. Tap + to add.'),
@@ -305,13 +311,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       height: 160,
                       child: ListView.separated(
                         scrollDirection: Axis.horizontal,
-                        itemCount: items.length,
+                        itemCount: _cows.length,
                         separatorBuilder: (_, __) => const SizedBox(width: 12),
                         itemBuilder: (context, i) {
-                          final row = items[i];
-                          final name = row['name'] as String;
-                          final breed = row['breed'] as String;
-                          final lm = row['lactation_month'] as int;
+                          final row = _cows[i];
+                          final name = (row['name'] ?? '') as String;
+                          final breed = (row['breed'] ?? '') as String;
+                          final lm = row['lactation_month'] ?? 0;
                           final img = row['image_path'] as String?;
 
                           return Container(
@@ -337,9 +343,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                                     color: cs.primaryContainer,
                                     image: img != null
                                         ? DecorationImage(
-                                      image: AssetImage(img),
-                                      fit: BoxFit.cover,
-                                    )
+                                            image: NetworkImage('http://10.0.2.2:8000/$img'),
+                                            fit: BoxFit.cover,
+                                          )
                                         : null,
                                   ),
                                   child: img == null

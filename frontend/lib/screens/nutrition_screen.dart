@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../api/prediction_api.dart';
 
 class NutritionScreen extends StatefulWidget {
   const NutritionScreen({super.key});
@@ -63,6 +64,29 @@ class _NutritionScreenState extends State<NutritionScreen> {
         _result = response;
         _isLoading = false;
       });
+
+      // Save to smartfarm database
+      final pred = response['prediction'] as Map<String, dynamic>?;
+      if (pred != null) {
+        PredictionApi.saveNutrition(
+          inputData: {
+            'Age_Months': _ageMonths,
+            'Weight_kg': _weightKg,
+            'Breed': _breed,
+            'Milk_Yield_L_per_day': _milkYield,
+            'Health_Status': _healthStatus,
+            'Disease': _disease,
+            'Body_Condition_Score': _bodyConditionScore,
+            'Location': _location,
+            'Energy_MJ_per_day': _energyMJ,
+            'Crude_Protein_g_per_day': _crudeProtein,
+            'Recommended_Feed_Type': _feedType,
+          },
+          dryMatterIntakeKg: (pred['Dry_Matter_Intake_kg_per_day'] as num).toDouble(),
+          calciumGPerDay: (pred['Calcium_g_per_day'] as num).toDouble(),
+          phosphorusGPerDay: (pred['Phosphorus_g_per_day'] as num).toDouble(),
+        ).catchError((e) => debugPrint('Save nutrition failed: $e'));
+      }
     } catch (e) {
       setState(() {
         _isLoading = false;

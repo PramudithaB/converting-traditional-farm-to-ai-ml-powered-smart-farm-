@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../services/api_service.dart';
+import '../api/prediction_api.dart';
 
 class BehaviorDetectionScreen extends StatefulWidget {
   const BehaviorDetectionScreen({super.key});
@@ -53,6 +54,21 @@ class _BehaviorDetectionScreenState extends State<BehaviorDetectionScreen> {
         _result = result;
         _isAnalyzing = false;
       });
+
+      // Save behavior detection to smartfarm database
+      final behaviors = result['behaviors'] as List?;
+      final topBehavior = (behaviors != null && behaviors.isNotEmpty)
+          ? behaviors[0]['behavior'] as String?
+          : null;
+      final topConf = (behaviors != null && behaviors.isNotEmpty)
+          ? (behaviors[0]['confidence'] as num?)?.toDouble()
+          : null;
+      PredictionApi.saveBehaviorDetection(
+        detectionType: 'video',
+        behavior: topBehavior,
+        confidence: topConf,
+        details: result,
+      ).catchError((e) => debugPrint('Save behavior detection failed: $e'));
     } catch (e) {
       setState(() {
         _isAnalyzing = false;

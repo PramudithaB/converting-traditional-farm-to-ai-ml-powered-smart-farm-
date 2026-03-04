@@ -6,11 +6,9 @@ import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/add_cow_screen.dart';
-import 'db/app_db.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await AppDb.instance.init();
   runApp(const MyApp());
 }
 
@@ -109,8 +107,10 @@ class MyApp extends StatelessWidget {
 
   Future<Widget> _initialScreen() async {
     final prefs = await SharedPreferences.getInstance();
-    final userId = prefs.getInt('loggedInUserId');
-    return userId != null ? const DashboardScreen() : const LoginScreen();
+    final token = prefs.getString('authToken');
+    return (token != null && token.isNotEmpty)
+        ? const DashboardScreen()
+        : const LoginScreen();
   }
 
   @override

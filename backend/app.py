@@ -14,10 +14,14 @@ from tensorflow.keras.models import load_model
 from tensorflow.keras.preprocessing import image
 from tensorflow.keras import backend as K
 from tensorflow import keras
+from tensorflow.keras.applications.resnet50 import ResNet50, preprocess_input
+from numpy.linalg import norm
 from ultralytics import YOLO
 from PIL import Image
 import cv2
 import os
+import uuid
+import random
 from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
@@ -79,6 +83,31 @@ try:
 except Exception as e:
     print(f"✗ Cow Identification model failed: {e}")
     cow_identify_model = None
+
+# ==================== Cow Registration YOLO (face detection) ====================
+try:
+    cow_register_yolo = YOLO("register/best.pt")
+    print("✓ Cow Registration YOLO model loaded")
+except Exception as e:
+    print(f"✗ Cow Registration YOLO failed: {e}")
+    cow_register_yolo = None
+
+# ==================== ResNet50 Feature Model (for embeddings) ====================
+cow_feature_model = None
+def get_feature_model():
+    global cow_feature_model
+    if cow_feature_model is None:
+        cow_feature_model = ResNet50(weights="imagenet", include_top=False, pooling="avg")
+        print("✓ ResNet50 feature model loaded")
+    return cow_feature_model
+
+# ==================== Cow Weight YOLO (for image-based feed prediction) ====================
+try:
+    cow_weight_yolo = YOLO("cow_weight/best.pt")
+    print("✓ Cow Weight YOLO model loaded")
+except Exception as e:
+    print(f"✗ Cow Weight YOLO failed: {e}")
+    cow_weight_yolo = None
 
 # ==================== Egg Hatch Models ====================
 try:
@@ -202,6 +231,38 @@ except Exception as e:
     cattle_behavior_analyzer = None
 
 # ==================== Helper Functions ====================
+
+def extract_cow_embedding(face_img):
+    """Extract ResNet50 embedding from a cropped cow face image"""
+    feature_model = get_feature_model()
+    face_img = cv2.resize(face_img, (224, 224))
+    face_img = preprocess_input(face_img.astype(np.float64).copy())
+    face_img = np.expand_dims(face_img, axis=0)
+    embedding = feature_model.predict(face_img, verbose=0)[0]
+    return embedding
+
+def get_cow_embedding_from_image(image_bytes):
+    """Detect cow face with YOLO and extract ResNet50 embedding"""
+    yolo_model = cow_register_yolo
+    if yolo_model is None:
+        return None
+    npimg = np.frombuffer(image_bytes, np.uint8)
+    img = cv2.imdecode(npimg, cv2.IMREAD_COLOR)
+    results = yolo_model(img)
+    for r in results:
+        if r.boxes is None or len(r.boxes) == 0:
+            continue
+        boxes = r.boxes.xyxy.cpu().numpy()
+        x1, y1, x2, y2 = map(int, boxes[0])
+        face_crop = img[y1:y2, x1:x2]
+        embedding = extract_cow_embedding(face_crop)
+        return embedding
+    return None
+
+def cosine_similarity_vec(a, b):
+    """Compute cosine similarity between two vectors"""
+    return float(np.dot(a, b) / (norm(a) * norm(b)))
+
 def process_image(img_path):
     img = image.load_img(img_path, target_size=IMG_SIZE)
     img_array = image.img_to_array(img) / 255.0
@@ -479,6 +540,169 @@ def predict_cow_feed_manual():
             "cow_weight_kg": round(cow_weight, 2),
             "daily_feed_kg": round(daily_feed, 2)
         })
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ==================== Laravel Integration Endpoints ====================
+# These endpoints are called by the Laravel cattle_identify app (NOT by Flutter directly)
+
+@app.route("/register", methods=["POST"])
+def register_cow_embedding():
+    """Extract cow face embedding for registration (called by Laravel)"""
+    if "image" not in request.files:
+        return jsonify({"error": "No image provided"}), 400
+
+    image_bytes = request.files["image"].read()
+    embedding = get_cow_embedding_from_image(image_bytes)
+
+    if embedding is None:
+        return jsonify({"error": "No cow detected in image"}), 400
+
+    return jsonify({
+        "embedding": embedding.tolist(),
+        "length": len(embedding)
+    })
+
+@app.route("/identify", methods=["POST"])
+def identify_cow_embedding():
+    """Identify cow by comparing embeddings (called by Laravel)"""
+    if "image" not in request.files:
+        return jsonify({"error": "No image"}), 400
+
+    embeddings_list = request.form.get("embeddings")
+    if embeddings_list is None:
+        return jsonify({"error": "No embeddings provided"}), 400
+
+    import json as json_lib
+    try:
+        embeddings_list = json_lib.loads(embeddings_list)
+    except:
+        embeddings_list = eval(embeddings_list)
+
+    image_bytes = request.files["image"].read()
+    new_embedding = get_cow_embedding_from_image(image_bytes)
+
+    if new_embedding is None:
+        return jsonify({"error": "No cow detected"}), 400
+
+    best_match_index = -1
+    best_similarity = -1
+
+    for i, emb in enumerate(embeddings_list):
+        emb = np.array(emb)
+        similarity = cosine_similarity_vec(emb, new_embedding[:len(emb)])
+        if similarity > best_similarity:
+            best_similarity = similarity
+            best_match_index = i
+
+    return jsonify({
+        "match_index": int(best_match_index),
+        "similarity": float(best_similarity),
+        "matched": True if best_similarity > 0.70 else False
+    })
+
+@app.route("/predict", methods=["POST"])
+def predict_feed_from_image_laravel():
+    """Image-based cow weight + feed prediction (called by Laravel).
+    Uses segmentation → regression pipeline (same as /cow-feed/predict-from-image)."""
+    img_path = None
+    try:
+        if "image" not in request.files:
+            return jsonify({"error": "Image required"}), 400
+
+        file = request.files["image"]
+        filename = str(uuid.uuid4()) + ".jpg"
+        img_path = os.path.join(UPLOAD_FOLDER, filename)
+        file.save(img_path)
+
+        if cow_feed_model is None:
+            return jsonify({"error": "Feed model not loaded"}), 503
+
+        if cow_feed_seg_model is None or cow_feed_reg_model is None:
+            return jsonify({"error": "Cow weight estimation models not loaded"}), 503
+
+        cow_breed = request.form.get("breed", "").strip().title()
+        cow_age = float(request.form.get("age", 0))
+        milk_yield = float(request.form.get("milk_yield", 0))
+        activity = request.form.get("activity", "").strip().title()
+
+        if cow_breed not in cow_feed_breed_encoder.classes_:
+            return jsonify({"error": f"Invalid breed. Allowed: {list(cow_feed_breed_encoder.classes_)}"}), 400
+        if activity not in cow_feed_activity_encoder.classes_:
+            return jsonify({"error": f"Invalid activity. Allowed: {list(cow_feed_activity_encoder.classes_)}"}), 400
+
+        encoded_breed = cow_feed_breed_encoder.transform([cow_breed])[0]
+        encoded_activity = cow_feed_activity_encoder.transform([activity])[0]
+
+        # Estimate cow weight using segmentation + regression pipeline
+        input_image = process_image(img_path)
+        predicted_mask = cow_feed_seg_model.predict(input_image)
+        predicted_mask = predicted_mask[..., :1]
+        predicted_weight = cow_feed_reg_model.predict(predicted_mask)
+        cow_weight = float(predicted_weight[0][0])
+
+        feed_input = pd.DataFrame([{
+            "Cow Breed": encoded_breed,
+            "Cow Age (months)": cow_age,
+            "Cow Weight (kg)": cow_weight,
+            "Milk Yield (L/day)": milk_yield,
+            "Activity Level": encoded_activity
+        }])
+
+        daily_feed = float(cow_feed_model.predict(feed_input)[0])
+
+        if img_path and os.path.exists(img_path):
+            os.remove(img_path)
+
+        return jsonify({
+            "mode": "image",
+            "cow_weight_kg": round(cow_weight, 2),
+            "daily_feed_kg": round(daily_feed, 2)
+        })
+
+    except Exception as e:
+        if img_path and os.path.exists(img_path):
+            os.remove(img_path)
+        return jsonify({"error": str(e)}), 500
+
+@app.route("/predict_manual", methods=["POST"])
+def predict_feed_manual_laravel():
+    """Manual feed prediction (called by Laravel)"""
+    try:
+        if cow_feed_model is None:
+            return jsonify({"error": "Feed model not loaded"}), 503
+
+        data = request.get_json()
+        cow_breed = data["breed"].strip().title()
+        cow_age = float(data["age"])
+        cow_weight = float(data["weight"])
+        milk_yield = float(data["milk_yield"])
+        activity = data["activity"].strip().title()
+
+        if cow_breed not in cow_feed_breed_encoder.classes_:
+            return jsonify({"error": f"Invalid breed. Allowed: {list(cow_feed_breed_encoder.classes_)}"}), 400
+        if activity not in cow_feed_activity_encoder.classes_:
+            return jsonify({"error": f"Invalid activity. Allowed: {list(cow_feed_activity_encoder.classes_)}"}), 400
+
+        encoded_breed = cow_feed_breed_encoder.transform([cow_breed])[0]
+        encoded_activity = cow_feed_activity_encoder.transform([activity])[0]
+
+        feed_input = pd.DataFrame([{
+            "Cow Breed": encoded_breed,
+            "Cow Age (months)": cow_age,
+            "Cow Weight (kg)": cow_weight,
+            "Milk Yield (L/day)": milk_yield,
+            "Activity Level": encoded_activity
+        }])
+
+        daily_feed = float(cow_feed_model.predict(feed_input)[0])
+
+        return jsonify({
+            "mode": "manual",
+            "cow_weight_kg": cow_weight,
+            "daily_feed_kg": round(daily_feed, 2)
+        })
+
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 

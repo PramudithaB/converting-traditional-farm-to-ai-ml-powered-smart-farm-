@@ -1,7 +1,7 @@
 import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../db/app_db.dart';
+import '../api/auth_api.dart';
 import 'dashboard_screen.dart';
 import 'register_screen.dart';
 
@@ -27,20 +27,20 @@ class _LoginScreenState extends State<LoginScreen> {
       _error = null;
     });
     try {
-      final user = await AppDb.instance.login(
-        login: _loginCtrl.text.trim(),
+      final result = await AuthApi.login(
+        email: _loginCtrl.text.trim(),
         password: _passwordCtrl.text.trim(),
       );
-      if (user == null) {
-        setState(() => _error = 'Invalid credentials');
-      } else {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setInt('loggedInUserId', user['id'] as int);
-        if (!mounted) return;
-        Navigator.pushReplacementNamed(context, DashboardScreen.routeName);
-      }
+      final token = result['token'] as String;
+      final user = result['user'] as Map<String, dynamic>;
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('authToken', token);
+      await prefs.setInt('loggedInUserId', user['id'] as int);
+      await prefs.setString('userName', user['name'] as String? ?? '');
+      if (!mounted) return;
+      Navigator.pushReplacementNamed(context, DashboardScreen.routeName);
     } catch (e) {
-      setState(() => _error = 'Login failed: $e');
+      setState(() => _error = e.toString().replaceAll('Exception: ', ''));
     } finally {
       setState(() => _loading = false);
     }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../api/prediction_api.dart';
 
 class AnimalBirthScreen extends StatefulWidget {
   const AnimalBirthScreen({super.key});
@@ -45,6 +46,13 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
         _result = response;
         _isPredicting = false;
       });
+
+      // Save to smartfarm database
+      PredictionApi.saveAnimalBirth(
+        features: features,
+        estimatedDaysToBirth: (response['Estimated Days to Birth'] as num).toDouble(),
+        willBirthIn2Days: response['Will Birth in Next 2 Days'] as String,
+      ).catchError((e) => debugPrint('Save birth prediction failed: $e'));
     } catch (e) {
       setState(() {
         _isPredicting = false;

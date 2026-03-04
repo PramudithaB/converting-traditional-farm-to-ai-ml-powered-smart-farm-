@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../api/prediction_api.dart';
 
 class HatchingScreen extends StatefulWidget {
   const HatchingScreen({super.key});
@@ -41,6 +42,17 @@ class _HatchingScreenState extends State<HatchingScreen> {
         _result = response;
         _isPredicting = false;
       });
+
+      // Save to smartfarm database
+      PredictionApi.saveEggHatch(
+        temperature: _temperature,
+        humidity: _humidity,
+        eggWeight: _eggWeight,
+        eggTurningFrequency: _turningFrequency,
+        incubationDuration: _incubationDuration,
+        hatchProbability: (response['hatch_probability'] as num).toDouble(),
+        predictedClass: response['predicted_class'] as int,
+      ).catchError((e) => debugPrint('Save egg hatch failed: $e'));
     } catch (e) {
       if (!mounted) return;
       setState(() {

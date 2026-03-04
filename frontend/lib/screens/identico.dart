@@ -1,7 +1,9 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:io';
+
+import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import 'dart:io';
-import '../services/api_service.dart';
+
+import '../api/identify_cow_api.dart';
 
 class IdenticoScreen extends StatefulWidget {
   const IdenticoScreen({super.key});
@@ -13,7 +15,7 @@ class IdenticoScreen extends StatefulWidget {
 class _IdenticoScreenState extends State<IdenticoScreen> {
   File? _selectedImage;
   bool _isDetecting = false;
-  Map<String, dynamic>? _result;
+  Map<String, dynamic>? _result; // full JSON from backend
   final ImagePicker _picker = ImagePicker();
 
   Future<void> _pickImage(ImageSource source) async {
@@ -40,12 +42,14 @@ class _IdenticoScreenState extends State<IdenticoScreen> {
 
   Future<void> _identifyCows() async {
     if (_selectedImage == null) return;
+
     setState(() {
       _isDetecting = true;
+      _result = null;
     });
 
     try {
-      final response = await ApiService.identifyCow(_selectedImage!);
+      final response = await IdentifyCowApi.identifyCow(_selectedImage!);
       setState(() {
         _result = response;
         _isDetecting = false;
@@ -64,14 +68,18 @@ class _IdenticoScreenState extends State<IdenticoScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    
+
+    final cow = _result != null ? _result!['cow'] as Map<String, dynamic>? : null;
+    final similarity = _result != null ? _result!['similarity'] as num? : null;
+
     return Scaffold(
       appBar: AppBar(title: const Text('Cow Identifier')),
-      body: SingleChildScrollView(
+      body: SingleChildScrollView( // <-- fixed name
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            // Header
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -89,23 +97,25 @@ class _IdenticoScreenState extends State<IdenticoScreen> {
                   Text(
                     'AI-Powered Cow Identification',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: cs.onPrimaryContainer,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      color: cs.onPrimaryContainer,
+                      fontWeight: FontWeight.bold,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Upload a photo to identify and count cows',
+                    'Upload a photo to identify a registered cow',
                     style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                          color: cs.onPrimaryContainer.withOpacity(0.8),
-                        ),
+                      color: cs.onPrimaryContainer.withOpacity(0.8),
+                    ),
                     textAlign: TextAlign.center,
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 24),
+
+            // Image pick buttons
             Row(
               children: [
                 Expanded(
@@ -135,6 +145,7 @@ class _IdenticoScreenState extends State<IdenticoScreen> {
                 ),
               ],
             ),
+
             if (_selectedImage != null) ...[
               const SizedBox(height: 24),
               Container(
@@ -163,18 +174,19 @@ class _IdenticoScreenState extends State<IdenticoScreen> {
                 onPressed: _isDetecting ? null : _identifyCows,
                 icon: _isDetecting
                     ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
                     : const Icon(Icons.search),
-                label: Text(_isDetecting ? 'Identifying...' : 'Identify Cows'),
+                label: Text(_isDetecting ? 'Identifying...' : 'Identify Cow'),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
               ),
             ],
-            if (_result != null) ...[
+
+            if (cow != null) ...[
               const SizedBox(height: 24),
               Card(
                 elevation: 4,
@@ -191,50 +203,55 @@ class _IdenticoScreenState extends State<IdenticoScreen> {
                           Icon(Icons.pets, color: cs.primary, size: 32),
                           const SizedBox(width: 12),
                           Text(
-                            'Detection Results',
+                            'Identification Result',
                             style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
                         ],
                       ),
                       const Divider(height: 24),
-                      _buildResultItem(
-                        'Cows Detected',
-                        '${(_result!['detections'] as List?)?.length ?? 0}',
-                        Icons.confirmation_number,
+                      _buildResultRow('Cow ID', cow['cow_id']?.toString() ?? 'N/A', cs),
+                      _buildResultRow('Name', cow['name']?.toString() ?? 'N/A', cs),
+                      _buildResultRow('Breed', cow['breed']?.toString() ?? 'N/A', cs),
+                      _buildResultRow(
+                        'Lactation Month',
+                        cow['lactation_month']?.toString() ?? 'N/A',
                         cs,
                       ),
-                      if (_result!['detections'] != null && (_result!['detections'] as List).isNotEmpty) ...[
-                        const SizedBox(height: 16),
-                        Text(
-                          'Detection Details:',
-                          style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                fontWeight: FontWeight.bold,
-                              ),
+                      if (similarity != null)
+                        _buildResultRow(
+                          'Similarity',
+                          (similarity.toDouble() * 100).toStringAsFixed(1) + ' %',
+                          cs,
                         ),
-                        const SizedBox(height: 8),
-                        ...(_result!['detections'] as List).asMap().entries.map((entry) {
-                          final idx = entry.key;
-                          final detection = entry.value;
-                          final confidence = (detection['confidence'] as num?)?.toDouble() ?? 0.0;
-                          return Card(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            child: ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor: cs.primaryContainer,
-                                child: Text('${idx + 1}'),
-                              ),
-                              title: Text('Cow ${idx + 1}'),
-                              subtitle: Text('Confidence: ${(confidence * 100).toStringAsFixed(1)}%'),
-                              trailing: Icon(
-                                confidence > 0.8 ? Icons.check_circle : Icons.info,
-                                color: confidence > 0.8 ? Colors.green : Colors.orange,
+                      const SizedBox(height: 16),
+                      if (cow['image_path'] != null &&
+                          (cow['image_path'] as String).isNotEmpty)
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Registered Cow Image',
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleMedium
+                                  ?.copyWith(fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 8),
+                            ClipRRect(
+                              borderRadius: BorderRadius.circular(12),
+                              child: Image.network(
+                                'http://10.0.2.2:8000/${cow['image_path']}',
+                                height: 180,
+                                width: double.infinity,
+                                fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                const Text('Could not load image'),
                               ),
                             ),
-                          );
-                        }).toList(),
-                      ],
+                          ],
+                        ),
                     ],
                   ),
                 ),
@@ -246,41 +263,22 @@ class _IdenticoScreenState extends State<IdenticoScreen> {
     );
   }
 
-  Widget _buildResultItem(String label, String value, IconData icon, ColorScheme cs) {
+  Widget _buildResultRow(String label, String value, ColorScheme cs) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.symmetric(vertical: 4),
       child: Row(
         children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: cs.primaryContainer,
-              borderRadius: BorderRadius.circular(12),
+          Text(
+            '$label: ',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: cs.onSurface,
             ),
-            child: Icon(icon, color: cs.primary, size: 24),
           ),
-          const SizedBox(width: 16),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: cs.onSurface.withOpacity(0.7),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: cs.primary,
-                  ),
-                ),
-              ],
+            child: Text(
+              value,
+              style: TextStyle(color: cs.onSurface.withOpacity(0.8)),
             ),
           ),
         ],
