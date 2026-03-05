@@ -14,11 +14,12 @@ Route::post('/login', [AuthController::class, 'login']);
 // ─── Cow CRUD ───
 Route::get('/cows', [CowController::class, 'index']);
 Route::post('/cows', [CowController::class, 'store']);
+Route::get('/cows/public', [CowController::class, 'indexWithoutEmbedding']);
+Route::post('/cows/identify', [CowController::class, 'identify']);
+Route::get('/cows/{cow}/profile', [CowController::class, 'profile']);
 Route::get('/cows/{cow}', [CowController::class, 'show']);
 Route::put('/cows/{cow}', [CowController::class, 'update']);
 Route::delete('/cows/{cow}', [CowController::class, 'destroy']);
-Route::post('/cows/identify', [CowController::class, 'identify']);
-Route::get('/cows/public', [CowController::class, 'indexWithoutEmbedding']);
 
 // ─── Cow Feed ───
 Route::get('/cows/{cow}/feed', [CowFeedController::class, 'index']);

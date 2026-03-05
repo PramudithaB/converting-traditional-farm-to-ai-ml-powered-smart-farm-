@@ -5,8 +5,8 @@ class AuthApi {
   // MUST match your Laravel API base URL for the device/emulator
   // If you're using Postman successfully at http://192.168.1.51:8000/api/login,
   // this value is correct:
-  // Local Laravel server - Use 10.0.2.2 for Android Emulator
-  static const String baseUrl = 'http://10.0.2.2:8000/api';
+  // Local Laravel server - WiFi IP for physical device
+  static const String baseUrl = 'http://192.168.8.100:8000/api';
 
   static Future<Map<String, dynamic>> login({
     required String email,

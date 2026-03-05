@@ -6,8 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class CowApi {
   // Change to match your Laravel API base
-  // Local Laravel server - Use 10.0.2.2 for Android Emulator
-  static const String baseUrl = 'http://10.0.2.2:8000/api';
+  // Local Laravel server - WiFi IP for physical device
+  static const String baseUrl = 'http://192.168.8.100:8000/api';
 
   static Future<String> _getToken() async {
     final prefs = await SharedPreferences.getInstance();
@@ -50,6 +50,30 @@ class CowApi {
 
     final data = jsonDecode(response.body);
     return (data['cow'] ?? data) as Map<String, dynamic>;
+  }
+
+  /// GET /api/cows/{id}/profile
+  /// Returns cow + health_status, age_months, disease_detections, behavior_detections,
+  /// birth_predictions, feeds, nutrition — all in one call.
+  static Future<Map<String, dynamic>> getCowProfile(int cowId) async {
+    final token = await _getToken();
+    final uri = Uri.parse('$baseUrl/cows/$cowId/profile');
+
+    final response = await http.get(
+      uri,
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Failed to load cow profile: ${response.statusCode} ${response.body}',
+      );
+    }
+
+    return jsonDecode(response.body) as Map<String, dynamic>;
   }
 
   /// GET /api/cows

@@ -18,6 +18,7 @@ import 'behavior_detection_screen.dart';
 import 'model_comparison_screen.dart';
 import 'video_analysis_screen.dart';
 import 'nutrition_screen.dart';
+import 'cow_profile_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   static const routeName = '/dashboard';
@@ -339,8 +340,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final lm    = row['lactation_month'] ?? 0;
     final img   = row['image_path'] as String?;
     final cowId = (row['cow_id'] ?? '') as String;
+    final id    = row['id'] as int?;
 
-    return Container(
+    return GestureDetector(
+      onTap: id != null
+          ? () => Navigator.push(
+                context,
+                MaterialPageRoute(
+                    builder: (_) => CowProfileScreen(initialCowId: id)))
+          : null,
+      child: Container(
       width: 180,
       decoration: BoxDecoration(
         color: cs.surface,
@@ -359,7 +368,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             child: img != null
                 ? Image.network(
-                    'http://10.0.2.2:8000/$img',
+                    'http://192.168.8.100:8000/$img',
                     height: 100,
                     width: double.infinity,
                     fit: BoxFit.cover,
@@ -409,6 +418,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -692,6 +702,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _ComponentItem('Nutrition Advisor', Icons.local_dining,
         Colors.orange.shade600,
         () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NutritionScreen()))),
+    _ComponentItem('Cow Profile', Icons.account_circle,
+        Colors.teal.shade600,
+        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CowProfileScreen()))),
   ];
 }
 

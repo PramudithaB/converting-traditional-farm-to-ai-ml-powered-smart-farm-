@@ -6,8 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 class IdentifyCowApi {
   // Change this if your API base URL changes
-  // Local Laravel server - Use 10.0.2.2 for Android Emulator
-  static const String baseUrl = 'http://10.0.2.2:8000/api';
+  // Local Laravel server - WiFi IP for physical device
+  static const String baseUrl = 'http://192.168.8.100:8000/api';
 
   static Future<String> _getToken() async {
     final prefs = await SharedPreferences.getInstance();

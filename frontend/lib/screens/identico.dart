@@ -242,7 +242,7 @@ class _IdenticoScreenState extends State<IdenticoScreen> {
                             ClipRRect(
                               borderRadius: BorderRadius.circular(12),
                               child: Image.network(
-                                'http://10.0.2.2:8000/${cow['image_path']}',
+                                'http://192.168.8.100:8000/${cow['image_path']}',
                                 height: 180,
                                 width: double.infinity,
                                 fit: BoxFit.cover,

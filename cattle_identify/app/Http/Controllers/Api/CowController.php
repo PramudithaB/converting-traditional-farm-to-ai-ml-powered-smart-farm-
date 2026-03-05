@@ -107,6 +107,47 @@ class CowController extends Controller
     }
 
     /**
+     * GET /api/cows/{cow}/profile
+     * Full cow profile: cow data + related records aggregated.
+     */
+    public function profile(Cow $cow)
+    {
+        $cow->loadMissing([
+            'diseaseDetections'       => fn($q) => $q->latest()->limit(10),
+            'behaviorDetections'      => fn($q) => $q->latest()->limit(10),
+            'birthPredictions'        => fn($q) => $q->latest()->limit(5),
+            'feeds'                   => fn($q) => $q->latest()->limit(10),
+            'nutritionRecommendations'=> fn($q) => $q->latest()->limit(5),
+        ]);
+
+        // Health status from most recent disease detection
+        $latestDisease      = $cow->diseaseDetections->first();
+        $latestDiseaseName  = $latestDisease?->disease_name;
+        $healthStatus = 'Unknown';
+        if ($latestDisease) {
+            $healthStatus = strtolower($latestDiseaseName) === 'healthy' ? 'Healthy' : 'Unhealthy';
+        }
+
+        // Age in months from birthdate
+        $ageMonths = null;
+        if ($cow->birthdate) {
+            $ageMonths = (int) \Carbon\Carbon::parse($cow->birthdate)->diffInMonths(now());
+        }
+
+        return response()->json([
+            'cow'               => $cow->makeHidden(['embedding']),
+            'health_status'     => $healthStatus,
+            'latest_disease'    => $latestDiseaseName,
+            'age_months'        => $ageMonths,
+            'disease_detections'  => $cow->diseaseDetections->values(),
+            'behavior_detections' => $cow->behaviorDetections->values(),
+            'birth_predictions'   => $cow->birthPredictions->values(),
+            'feeds'               => $cow->feeds->values(),
+            'nutrition'           => $cow->nutritionRecommendations->values(),
+        ]);
+    }
+
+    /**
      * GET /api/cows/{cow}
      */
     public function show(Cow $cow)
