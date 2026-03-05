@@ -31,6 +31,8 @@ class CowController extends Controller
             'birthdate'        => 'nullable|date',
             'breed'            => 'nullable|string|max:255',
             'lactation_month'  => 'nullable|integer|min:0',
+            'weight'           => 'nullable|numeric|min:0',
+            'previous_disease' => 'nullable',
             'image'            => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
         ]);
 
@@ -87,13 +89,15 @@ class CowController extends Controller
 
         // 3) Save cow with embedding stored as JSON string
         $cow = Cow::create([
-            'cow_id'          => $data['cow_id'],
-            'name'            => $data['name'],
-            'birthdate'       => $data['birthdate'] ?? null,
-            'breed'           => $data['breed'] ?? null,
-            'lactation_month' => $data['lactation_month'] ?? null,
-            'image_path'      => $imagePath,
-            'embedding'       => json_encode($embeddingArray),
+            'cow_id'           => $data['cow_id'],
+            'name'             => $data['name'],
+            'birthdate'        => $data['birthdate'] ?? null,
+            'breed'            => $data['breed'] ?? null,
+            'lactation_month'  => $data['lactation_month'] ?? null,
+            'weight'           => $data['weight'] ?? null,
+            'previous_disease' => $this->normalizePreviousDisease($data['previous_disease'] ?? null),
+            'image_path'       => $imagePath,
+            'embedding'        => json_encode($embeddingArray),
         ]);
 
         return response()->json([
@@ -121,6 +125,9 @@ class CowController extends Controller
             'birthdate'        => 'nullable|date',
             'breed'            => 'nullable|string|max:255',
             'lactation_month'  => 'nullable|integer|min:0',
+            'weight'           => 'nullable|numeric|min:0',
+            'previous_disease' => 'nullable|array',
+            'previous_disease.*' => 'string|max:255',
             'image'            => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
             'embedding'        => 'nullable',
         ]);
@@ -140,13 +147,15 @@ class CowController extends Controller
         }
 
         $cow->update([
-            'cow_id'          => $data['cow_id'] ?? $cow->cow_id,
-            'name'            => $data['name'] ?? $cow->name,
-            'birthdate'       => $data['birthdate'] ?? $cow->birthdate,
-            'breed'           => $data['breed'] ?? $cow->breed,
-            'lactation_month' => $data['lactation_month'] ?? $cow->lactation_month,
-            'image_path'      => $imagePath,
-            'embedding'       => $data['embedding'] ?? $cow->embedding,
+            'cow_id'           => $data['cow_id'] ?? $cow->cow_id,
+            'name'             => $data['name'] ?? $cow->name,
+            'birthdate'        => $data['birthdate'] ?? $cow->birthdate,
+            'breed'            => $data['breed'] ?? $cow->breed,
+            'lactation_month'  => $data['lactation_month'] ?? $cow->lactation_month,
+            'weight'           => array_key_exists('weight', $data) ? $data['weight'] : $cow->weight,
+            'previous_disease' => array_key_exists('previous_disease', $data) ? $data['previous_disease'] : $cow->previous_disease,
+            'image_path'       => $imagePath,
+            'embedding'        => $data['embedding'] ?? $cow->embedding,
         ]);
 
         return response()->json([
@@ -289,5 +298,23 @@ class CowController extends Controller
         }
 
         return $dot / (sqrt($normA) * sqrt($normB));
+    }
+
+    /**
+     * Normalize previous_disease: accepts a string or array and always returns an array.
+     * A null or empty value defaults to an empty array.
+     */
+    private function normalizePreviousDisease(mixed $value): array
+    {
+        if (is_null($value)) {
+            return [];
+        }
+        if (is_array($value)) {
+            return array_values(array_filter($value, fn($v) => is_string($v) && $v !== ''));
+        }
+        if (is_string($value) && $value !== '') {
+            return [$value];
+        }
+        return [];
     }
 }

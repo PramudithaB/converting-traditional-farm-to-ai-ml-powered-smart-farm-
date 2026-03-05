@@ -316,7 +316,7 @@ class ApiService {
     double? weight,
     double? age,
     double? temperature,
-    String? previousDisease,
+    List<String>? previousDisease,
   }) async {
     try {
       var request = http.MultipartRequest(
@@ -331,7 +331,9 @@ class ApiService {
       if (weight != null) request.fields['weight'] = weight.toString();
       if (age != null) request.fields['age'] = age.toString();
       if (temperature != null) request.fields['temperature'] = temperature.toString();
-      if (previousDisease != null) request.fields['previous_disease'] = previousDisease;
+      if (previousDisease != null && previousDisease.isNotEmpty) {
+        request.fields['previous_disease'] = previousDisease.join(', ');
+      }
 
       var streamedResponse = await request.send().timeout(Duration(seconds: 60));
       var response = await http.Response.fromStream(streamedResponse);

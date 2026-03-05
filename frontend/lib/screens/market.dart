@@ -118,7 +118,7 @@ class _MarketScreenState extends State<MarketScreen> {
               Slider(
                 value: _currentPrice,
                 min: 20,
-                max: 200,
+                max: 2000,
                 divisions: 180,
                 label: 'LKR ${_currentPrice.toStringAsFixed(2)}',
                 onChanged: (v) => setState(() => _currentPrice = v),

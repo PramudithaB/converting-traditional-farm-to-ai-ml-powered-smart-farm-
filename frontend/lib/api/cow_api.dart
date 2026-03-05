@@ -18,6 +18,40 @@ class CowApi {
     return token;
   }
 
+  /// PUT /api/cows/{id}  (partial profile update)
+  /// Updates only weight and/or previous_disease without touching image/embedding.
+  static Future<Map<String, dynamic>> updateCowProfile({
+    required int cowId,
+    double? weight,
+    List<String>? previousDisease,
+  }) async {
+    final token = await _getToken();
+    final uri = Uri.parse('$baseUrl/cows/$cowId');
+
+    final body = <String, dynamic>{};
+    if (weight != null) body['weight'] = weight;
+    if (previousDisease != null) body['previous_disease'] = previousDisease;
+
+    final response = await http.put(
+      uri,
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(body),
+    );
+
+    if (response.statusCode != 200) {
+      throw Exception(
+        'Failed to update cow profile: ${response.statusCode} ${response.body}',
+      );
+    }
+
+    final data = jsonDecode(response.body);
+    return (data['cow'] ?? data) as Map<String, dynamic>;
+  }
+
   /// GET /api/cows
   /// Returns a List of cow maps like:
   /// {

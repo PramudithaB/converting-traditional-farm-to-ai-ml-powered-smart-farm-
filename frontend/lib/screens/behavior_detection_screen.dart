@@ -3,6 +3,7 @@ import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../services/api_service.dart';
 import '../api/prediction_api.dart';
+import '../api/cow_api.dart';
 
 class BehaviorDetectionScreen extends StatefulWidget {
   const BehaviorDetectionScreen({super.key});
@@ -16,6 +17,108 @@ class _BehaviorDetectionScreenState extends State<BehaviorDetectionScreen> {
   bool _isAnalyzing = false;
   Map<String, dynamic>? _result;
   final ImagePicker _picker = ImagePicker();
+
+  // ── Cattle state ────────────────────────────────────────────────────────
+  List<Map<String, dynamic>> _cows = [];
+  Map<String, dynamic>? _selectedCow;
+  bool _loadingCows = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCows();
+  }
+
+  Future<void> _loadCows() async {
+    try {
+      final cows = await CowApi.getCows();
+      if (mounted) setState(() { _cows = cows; _loadingCows = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loadingCows = false);
+    }
+  }
+
+  Widget _buildCattleSelector() {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.purple.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.purple.shade200),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.pets, color: Colors.purple.shade600, size: 20),
+              const SizedBox(width: 8),
+              Text('Select Cattle',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold, color: Colors.purple.shade700)),
+              const Spacer(),
+              if (_selectedCow != null)
+                GestureDetector(
+                  onTap: () => setState(() => _selectedCow = null),
+                  child: Icon(Icons.close, size: 18, color: cs.onSurfaceVariant),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _loadingCows
+              ? const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2)))
+              : _cows.isEmpty
+                  ? Text('No cattle found. Add a cow first.',
+                      style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13))
+                  : DropdownButtonFormField<int>(
+                      value: _selectedCow?['id'] as int?,
+                      decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        filled: true,
+                        fillColor: cs.surface,
+                        hintText: 'Choose a cattle...',
+                      ),
+                      items: _cows.map((cow) {
+                        final label = '${cow['name'] ?? '—'} (${cow['cow_id'] ?? ''}) · ${cow['breed'] ?? ''}';
+                        return DropdownMenuItem<int>(
+                          value: cow['id'] as int,
+                          child: Text(label, overflow: TextOverflow.ellipsis),
+                        );
+                      }).toList(),
+                      onChanged: (id) {
+                        setState(() {
+                          _selectedCow = _cows.firstWhere((c) => c['id'] == id);
+                        });
+                      },
+                    ),
+          if (_selectedCow != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.purple.shade100.withOpacity(0.6),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green.shade600, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Selected: ${_selectedCow!['name'] ?? '—'} — ${_selectedCow!['breed'] ?? '—'} · Lactation ${_selectedCow!['lactation_month'] ?? '—'} mo',
+                      style: TextStyle(fontSize: 12, color: Colors.purple.shade900, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
   Future<void> _pickImage(ImageSource source) async {
     try {
@@ -64,7 +167,8 @@ class _BehaviorDetectionScreenState extends State<BehaviorDetectionScreen> {
           ? (behaviors[0]['confidence'] as num?)?.toDouble()
           : null;
       PredictionApi.saveBehaviorDetection(
-        detectionType: 'video',
+        cowId: _selectedCow?['id'] as int?,
+        detectionType: 'image',
         behavior: topBehavior,
         confidence: topConf,
         details: result,
@@ -128,6 +232,10 @@ class _BehaviorDetectionScreenState extends State<BehaviorDetectionScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: 24),
+
+            // Cattle selector
+            _buildCattleSelector(),
             const SizedBox(height: 24),
 
             // Image picker buttons

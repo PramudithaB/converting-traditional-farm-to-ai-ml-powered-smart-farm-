@@ -4,6 +4,7 @@ import 'dart:io';
 import '../services/api_service.dart';
 import '../api/identify_cow_api.dart';
 import '../api/prediction_api.dart';
+import '../api/cow_api.dart';
 
 class DiseaseDetectionScreen extends StatefulWidget {
   const DiseaseDetectionScreen({super.key});
@@ -18,6 +19,108 @@ class _DiseaseDetectionScreenState extends State<DiseaseDetectionScreen> {
   Map<String, dynamic>? _analysisResult;
   Map<String, dynamic>? _cowIdentityResult;
   final ImagePicker _picker = ImagePicker();
+
+  // ── Cattle state ────────────────────────────────────────────────────────
+  List<Map<String, dynamic>> _cows = [];
+  Map<String, dynamic>? _selectedCow;
+  bool _loadingCows = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCows();
+  }
+
+  Future<void> _loadCows() async {
+    try {
+      final cows = await CowApi.getCows();
+      if (mounted) setState(() { _cows = cows; _loadingCows = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loadingCows = false);
+    }
+  }
+
+  Widget _buildCattleSelector() {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.primaryContainer.withOpacity(0.35),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: cs.primary.withOpacity(0.25)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.pets, color: cs.primary, size: 20),
+              const SizedBox(width: 8),
+              Text('Select Cattle',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold, color: cs.primary)),
+              const Spacer(),
+              if (_selectedCow != null)
+                GestureDetector(
+                  onTap: () => setState(() => _selectedCow = null),
+                  child: Icon(Icons.close, size: 18, color: cs.onSurfaceVariant),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _loadingCows
+              ? const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2)))
+              : _cows.isEmpty
+                  ? Text('No cattle found. Add a cow first.',
+                      style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13))
+                  : DropdownButtonFormField<int>(
+                      value: _selectedCow?['id'] as int?,
+                      decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        filled: true,
+                        fillColor: cs.surface,
+                        hintText: 'Choose a cattle...',
+                      ),
+                      items: _cows.map((cow) {
+                        final label = '${cow['name'] ?? '—'} (${cow['cow_id'] ?? ''}) · ${cow['breed'] ?? ''}';
+                        return DropdownMenuItem<int>(
+                          value: cow['id'] as int,
+                          child: Text(label, overflow: TextOverflow.ellipsis),
+                        );
+                      }).toList(),
+                      onChanged: (id) {
+                        setState(() {
+                          _selectedCow = _cows.firstWhere((c) => c['id'] == id);
+                        });
+                      },
+                    ),
+          if (_selectedCow != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: cs.secondaryContainer.withOpacity(0.4),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green.shade600, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Selected: ${_selectedCow!['name'] ?? '—'} — ${_selectedCow!['breed'] ?? '—'} · Lactation ${_selectedCow!['lactation_month'] ?? '—'} mo',
+                      style: TextStyle(fontSize: 12, color: cs.onSecondaryContainer, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
   Future<void> _pickImage(ImageSource source) async {
     try {
@@ -70,10 +173,16 @@ class _DiseaseDetectionScreenState extends State<DiseaseDetectionScreen> {
       });
 
       // Save disease detection to smartfarm database
-      final disease = result['disease'] as String? ?? '';
-      final confidence = (result['confidence'] as num?)?.toDouble() ?? 0.0;
-      final modelUsed = result['recommended'] as String? ?? 'densenet';
+      final densenet = result['densenet'] as Map<String, dynamic>?;
+      final yolo     = result['yolo']     as Map<String, dynamic>?;
+      final dConf    = (densenet?['confidence'] as num?)?.toDouble() ?? 0.0;
+      final yConf    = (yolo?['confidence']     as num?)?.toDouble() ?? 0.0;
+      final useDense = dConf >= yConf;
+      final disease  = useDense ? (densenet?['disease'] as String? ?? '') : (yolo?['disease'] as String? ?? '');
+      final confidence = useDense ? dConf : yConf;
+      final modelUsed  = useDense ? 'densenet' : 'yolo';
       PredictionApi.saveDiseaseDetection(
+        cowId: _selectedCow?['id'] as int?,
         modelUsed: modelUsed,
         diseaseName: disease,
         confidence: confidence,
@@ -556,6 +665,10 @@ class _DiseaseDetectionScreenState extends State<DiseaseDetectionScreen> {
                 ],
               ),
             ),
+            const SizedBox(height: 24),
+
+            // Cattle selector
+            _buildCattleSelector(),
             const SizedBox(height: 24),
 
             // Image selection buttons

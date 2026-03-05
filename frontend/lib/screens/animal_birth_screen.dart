@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
-import '../api/prediction_api.dart';
 
 class AnimalBirthScreen extends StatefulWidget {
   const AnimalBirthScreen({super.key});
@@ -15,12 +14,20 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
   Map<String, dynamic>? _result;
 
   // Features for animal birth prediction
-  // Adjust these based on your model's required features
+  // Adjusted based on your requested ranges
   double _temperatureFahrenheit = 101.5;
-  double _bodyWeight = 1200.0;
-  int _gestationDay = 270;
+
+  // Body weight: 350 – 1000 kg
+  double _bodyWeight = 350.0;
+
+  // Milk yield: 5 – 50 L (using _gestationDay variable as "milk yield" now)
+  int _milkYield = 5;
+
+  // Parity: 1 – 10 (unchanged)
   double _udderSize = 5.0;
-  double _appetiteLevel = 7.0;
+
+  // Age in months: 1 – 200
+  double _ageMonths = 12.0;
 
   Future<void> _predictBirth() async {
     if (!_formKey.currentState!.validate()) return;
@@ -31,33 +38,25 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
     });
 
     try {
-      // Create feature array based on your model
       final features = [
         _temperatureFahrenheit,
         _bodyWeight,
-        _gestationDay.toDouble(),
+        _milkYield.toDouble(),
         _udderSize,
-        _appetiteLevel,
+        _ageMonths,
       ];
 
       final response = await ApiService.predictAnimalBirth(features: features);
-      
+
       setState(() {
         _result = response;
         _isPredicting = false;
       });
-
-      // Save to smartfarm database
-      PredictionApi.saveAnimalBirth(
-        features: features,
-        estimatedDaysToBirth: (response['Estimated Days to Birth'] as num).toDouble(),
-        willBirthIn2Days: response['Will Birth in Next 2 Days'] as String,
-      ).catchError((e) => debugPrint('Save birth prediction failed: $e'));
     } catch (e) {
       setState(() {
         _isPredicting = false;
       });
-      
+
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -95,29 +94,33 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
                 padding: const EdgeInsets.all(20),
                 child: Column(
                   children: [
-                    Icon(Icons.pets_outlined, size: 48, color: cs.onPrimaryContainer),
+                    Icon(Icons.pets_outlined,
+                        size: 48, color: cs.onPrimaryContainer),
                     const SizedBox(height: 12),
                     Text(
                       'Predict Birth Timing',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: cs.onPrimaryContainer,
-                            fontWeight: FontWeight.bold,
-                          ),
+                      style:
+                      Theme.of(context).textTheme.titleLarge?.copyWith(
+                        color: cs.onPrimaryContainer,
+                        fontWeight: FontWeight.bold,
+                      ),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 8),
                     Text(
                       'Enter animal health parameters to predict birth timing',
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: cs.onPrimaryContainer.withOpacity(0.8),
-                          ),
+                      style:
+                      Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: cs.onPrimaryContainer.withOpacity(0.8),
+                      ),
                       textAlign: TextAlign.center,
                     ),
                   ],
                 ),
               ),
               const SizedBox(height: 24),
-              
+
+              // Temperature
               Text(
                 'Temperature: ${_temperatureFahrenheit.toStringAsFixed(1)}°F',
                 style: Theme.of(context).textTheme.titleMedium,
@@ -128,38 +131,44 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
                 max: 104.0,
                 divisions: 60,
                 label: '${_temperatureFahrenheit.toStringAsFixed(1)}°F',
-                onChanged: (value) => setState(() => _temperatureFahrenheit = value),
+                onChanged: (value) =>
+                    setState(() => _temperatureFahrenheit = value),
               ),
               const SizedBox(height: 16),
-              
+
+              // Body Weight 350–1000 kg
               Text(
                 'Body Weight: ${_bodyWeight.toStringAsFixed(0)} kg',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               Slider(
                 value: _bodyWeight,
-                min: 800,
-                max: 1600,
-                divisions: 80,
-                label: '${_bodyWeight.toStringAsFixed(0)}kg',
-                onChanged: (value) => setState(() => _bodyWeight = value),
+                min: 350,
+                max: 1000,
+                divisions: 650, // 1 kg step
+                label: '${_bodyWeight.toStringAsFixed(0)} kg',
+                onChanged: (value) =>
+                    setState(() => _bodyWeight = value),
               ),
               const SizedBox(height: 16),
-              
+
+              // Milk Yield 5–50 L
               Text(
-                'Milk Yield: $_gestationDay',
+                'Milk Yield: $_milkYield L',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               Slider(
-                value: _gestationDay.toDouble(),
-                min: 240,
-                max: 290,
-                divisions: 50,
-                label: 'Day $_gestationDay',
-                onChanged: (value) => setState(() => _gestationDay = value.toInt()),
+                value: _milkYield.toDouble(),
+                min: 5,
+                max: 50,
+                divisions: 45, // 1 L step
+                label: '$_milkYield L',
+                onChanged: (value) =>
+                    setState(() => _milkYield = value.toInt()),
               ),
               const SizedBox(height: 16),
-              
+
+              // Parity (kept same meaning as your text)
               Text(
                 'Parity: ${_udderSize.toStringAsFixed(1)}/10',
                 style: Theme.of(context).textTheme.titleMedium,
@@ -170,39 +179,43 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
                 max: 10,
                 divisions: 9,
                 label: _udderSize.toStringAsFixed(1),
-                onChanged: (value) => setState(() => _udderSize = value),
+                onChanged: (value) =>
+                    setState(() => _udderSize = value),
               ),
               const SizedBox(height: 16),
-              
+
+              // Age Months 1–200
               Text(
-                'Age Months: ${_appetiteLevel.toStringAsFixed(1)}/400',
+                'Age Months: ${_ageMonths.toStringAsFixed(0)} / 200',
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               Slider(
-                value: _appetiteLevel,
-                min: 5,
-                max: 400,
-                divisions: 9,
-                label: _appetiteLevel.toStringAsFixed(1),
-                onChanged: (value) => setState(() => _appetiteLevel = value),
+                value: _ageMonths,
+                min: 1,
+                max: 200,
+                divisions: 199,
+                label: _ageMonths.toStringAsFixed(0),
+                onChanged: (value) =>
+                    setState(() => _ageMonths = value),
               ),
               const SizedBox(height: 24),
-              
+
               ElevatedButton.icon(
                 onPressed: _isPredicting ? null : _predictBirth,
                 icon: _isPredicting
                     ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
                     : const Icon(Icons.analytics),
-                label: Text(_isPredicting ? 'Predicting...' : 'Predict Birth'),
+                label: Text(
+                    _isPredicting ? 'Predicting...' : 'Predict Birth'),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
               ),
-              
+
               if (_result != null) ...[
                 const SizedBox(height: 24),
                 Card(
@@ -213,31 +226,32 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
                   child: Padding(
                     padding: const EdgeInsets.all(20),
                     child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                      crossAxisAlignment:
+                      CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            Icon(Icons.baby_changing_station, color: cs.primary, size: 32),
+                            Icon(Icons.baby_changing_station,
+                                color: cs.primary, size: 32),
                             const SizedBox(width: 12),
                             Text(
                               'Prediction Results',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
+                              style: Theme.of(context)
+                                  .textTheme
+                                  .titleLarge
+                                  ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ],
                         ),
                         const Divider(height: 24),
                         _buildResultItem(
                           'Will Birth in 2 Days',
-                          _result!['Will Birth in Next 2 Days'] ?? 'N/A',
+                          _result!['Will Birth in Next 2 Days'] ??
+                              'N/A',
                           cs,
                         ),
-                        // _buildResultItem(
-                        //   'Estimated Days to Birth',
-                        //   '${_result!['Estimated Days to Birth'] ?? 'N/A'} days',
-                        //   cs,
-                        // ),
                       ],
                     ),
                   ),
@@ -250,14 +264,16 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
     );
   }
 
-  Widget _buildResultItem(String label, String value, ColorScheme cs) {
+  Widget _buildResultItem(
+      String label, String value, ColorScheme cs) {
     final isPositive = value.toLowerCase().contains('yes');
     final isNegative = value.toLowerCase().contains('no');
-    
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        mainAxisAlignment:
+        MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
@@ -267,13 +283,15 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
             ),
           ),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(
+                horizontal: 12, vertical: 6),
             decoration: BoxDecoration(
               color: isPositive
                   ? Colors.green.withOpacity(0.2)
                   : isNegative
-                      ? Colors.orange.withOpacity(0.2)
-                      : cs.primaryContainer,
+                  ? Colors.orange
+                  .withOpacity(0.2)
+                  : cs.primaryContainer,
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(
@@ -284,8 +302,8 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
                 color: isPositive
                     ? Colors.green
                     : isNegative
-                        ? Colors.orange
-                        : cs.primary,
+                    ? Colors.orange
+                    : cs.primary,
               ),
             ),
           ),

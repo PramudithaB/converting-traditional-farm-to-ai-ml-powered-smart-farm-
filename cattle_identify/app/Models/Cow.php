@@ -12,6 +12,8 @@ class Cow extends Model
         'name',
         'breed',
         'lactation_month',
+        'weight',
+        'previous_disease',
         'image_path',
         'birthdate',
         'embedding',
@@ -19,6 +21,10 @@ class Cow extends Model
 
     protected $hidden = [
         'embedding',
+    ];
+
+    protected $casts = [
+        'previous_disease' => 'array',
     ];
 
     public function user()

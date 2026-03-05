@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../services/api_service.dart';
+import '../api/prediction_api.dart';
+import '../api/cow_api.dart';
 
 class VideoAnalysisScreen extends StatefulWidget {
   const VideoAnalysisScreen({Key? key}) : super(key: key);
@@ -20,6 +22,108 @@ class _VideoAnalysisScreenState extends State<VideoAnalysisScreen> {
   int _frameInterval = 30;
   bool _detectDisease = true;
   bool _detectBehavior = true;
+
+  // ── Cattle state ────────────────────────────────────────────────────────
+  List<Map<String, dynamic>> _cows = [];
+  Map<String, dynamic>? _selectedCow;
+  bool _loadingCows = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCows();
+  }
+
+  Future<void> _loadCows() async {
+    try {
+      final cows = await CowApi.getCows();
+      if (mounted) setState(() { _cows = cows; _loadingCows = false; });
+    } catch (_) {
+      if (mounted) setState(() => _loadingCows = false);
+    }
+  }
+
+  Widget _buildCattleSelector() {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.deepPurple.shade50,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.deepPurple.shade200),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.pets, color: Colors.deepPurple.shade600, size: 20),
+              const SizedBox(width: 8),
+              Text('Select Cattle',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold, color: Colors.deepPurple.shade700)),
+              const Spacer(),
+              if (_selectedCow != null)
+                GestureDetector(
+                  onTap: () => setState(() => _selectedCow = null),
+                  child: Icon(Icons.close, size: 18, color: cs.onSurfaceVariant),
+                ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          _loadingCows
+              ? const Center(child: SizedBox(height: 24, width: 24, child: CircularProgressIndicator(strokeWidth: 2)))
+              : _cows.isEmpty
+                  ? Text('No cattle found. Add a cow first.',
+                      style: TextStyle(color: cs.onSurfaceVariant, fontSize: 13))
+                  : DropdownButtonFormField<int>(
+                      value: _selectedCow?['id'] as int?,
+                      decoration: InputDecoration(
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                        filled: true,
+                        fillColor: cs.surface,
+                        hintText: 'Choose a cattle...',
+                      ),
+                      items: _cows.map((cow) {
+                        final label = '${cow['name'] ?? '—'} (${cow['cow_id'] ?? ''}) · ${cow['breed'] ?? ''}';
+                        return DropdownMenuItem<int>(
+                          value: cow['id'] as int,
+                          child: Text(label, overflow: TextOverflow.ellipsis),
+                        );
+                      }).toList(),
+                      onChanged: (id) {
+                        setState(() {
+                          _selectedCow = _cows.firstWhere((c) => c['id'] == id);
+                        });
+                      },
+                    ),
+          if (_selectedCow != null) ...[
+            const SizedBox(height: 10),
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.deepPurple.shade100.withOpacity(0.6),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.green.shade600, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Selected: ${_selectedCow!['name'] ?? '—'} — ${_selectedCow!['breed'] ?? '—'} · Lactation ${_selectedCow!['lactation_month'] ?? '—'} mo',
+                      style: TextStyle(fontSize: 12, color: Colors.deepPurple.shade900, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
 
   Future<void> _pickVideo(ImageSource source) async {
     try {
@@ -61,6 +165,50 @@ class _VideoAnalysisScreenState extends State<VideoAnalysisScreen> {
         _analysisResult = result;
         _isAnalyzing = false;
       });
+
+      // ── Save behavior detections to DB ─────────────────────────────────
+      if (_detectBehavior) {
+        final summary = result['summary'] as Map<String, dynamic>?;
+        final behaviors = summary?['behaviors'] as Map<String, dynamic>?;
+        if (behaviors != null && behaviors.isNotEmpty) {
+          // Find the dominant behavior (highest frame count)
+          String? topBehavior;
+          int topCount = 0;
+          behaviors.forEach((k, v) {
+            final count = (v as num).toInt();
+            if (count > topCount) { topCount = count; topBehavior = k; }
+          });
+          PredictionApi.saveBehaviorDetection(
+            cowId: _selectedCow?['id'] as int?,
+            detectionType: 'video',
+            behavior: topBehavior,
+            confidence: null,
+            details: {'summary': behaviors, 'frame_interval': _frameInterval},
+          ).catchError((e) => debugPrint('Save video behavior failed: $e'));
+        }
+      }
+
+      // ── Save disease detections to DB ─────────────────────────────────
+      if (_detectDisease) {
+        final summary = result['summary'] as Map<String, dynamic>?;
+        final diseases = summary?['diseases'] as Map<String, dynamic>?;
+        if (diseases != null && diseases.isNotEmpty) {
+          String? topDisease;
+          int topCount = 0;
+          diseases.forEach((k, v) {
+            final count = (v as num).toInt();
+            if (count > topCount) { topCount = count; topDisease = k; }
+          });
+          if (topDisease != null) {
+            PredictionApi.saveDiseaseDetection(
+              cowId: _selectedCow?['id'] as int?,
+              modelUsed: 'yolo_video',
+              diseaseName: topDisease!,
+              confidence: 0.0,
+            ).catchError((e) => debugPrint('Save video disease failed: $e'));
+          }
+        }
+      }
     } catch (e) {
       setState(() {
         _isAnalyzing = false;
@@ -93,6 +241,8 @@ class _VideoAnalysisScreenState extends State<VideoAnalysisScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildHeader(),
+            const SizedBox(height: 24),
+            _buildCattleSelector(),
             const SizedBox(height: 24),
             _buildVideoPickerButtons(),
             const SizedBox(height: 24),
