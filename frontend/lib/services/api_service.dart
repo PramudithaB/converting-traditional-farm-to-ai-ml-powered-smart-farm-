@@ -28,25 +28,41 @@ class ApiService {
 
   // ==================== Animal Birth Prediction ====================
   static Future<Map<String, dynamic>> predictAnimalBirth({
-    required List<double> features,
+    required List<double> features, // must be [age, parity, temp, milk, weight]
   }) async {
     try {
-      final response = await http.post(
+      // Flask expects raw JSON array: [age, parity, temp, milk, weight]
+      if (features.length != 5) {
+        throw Exception(
+          'Input must be [age, parity, temp, milk, weight] (length 5). Got ${features.length}',
+        );
+      }
+
+      final response = await http
+          .post(
         Uri.parse('$baseUrl/animal-birth/predict'),
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode({'features': features}),
-      ).timeout(timeout);
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode(features),
+      )
+          .timeout(timeout);
+
+      final decoded = json.decode(response.body);
 
       if (response.statusCode == 200) {
-        return json.decode(response.body);
+        return Map<String, dynamic>.from(decoded as Map);
       } else {
-        throw Exception('Prediction failed: ${response.body}');
+        final err = (decoded is Map && decoded['error'] != null)
+            ? decoded['error'].toString()
+            : response.body;
+        throw Exception('Prediction failed: $err');
       }
     } catch (e) {
       throw Exception('Animal birth prediction failed: $e');
     }
   }
-
   // ==================== Cow Identification ====================
   static Future<Map<String, dynamic>> identifyCow(File imageFile) async {
     try {

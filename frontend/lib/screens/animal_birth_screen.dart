@@ -14,12 +14,14 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
   bool _isPredicting = false;
   Map<String, dynamic>? _result;
 
-  // Model inputs
-  double _temperatureFahrenheit = 101.5;
-  double _bodyWeight = 150.0;
-  int _milkYield = 5;
-  double _parity = 2;
-  double _ageMonths = 12;
+  // Backend expects: [age, parity, temp, milk, weight]
+  // columns = ["Age_Months","Parity","Body_Temp_C","Milk_Yield_kg","Weight_kg"]
+
+  double _ageMonths = 40;
+  int _parity = 2;
+  double _bodyTempCelsius = 38.5;
+  double _milkYieldKg = 12.3;
+  double _bodyWeightKg = 450;
 
   Future<void> _predictBirth() async {
     if (!_formKey.currentState!.validate()) return;
@@ -30,17 +32,16 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
     });
 
     try {
-      // Correct order expected by Flask model
-      final features = [
-        _ageMonths,            // Age_Months
-        _parity,               // Parity
-        _temperatureFahrenheit,// Body_Temp_C
-        _milkYield.toDouble(), // Milk_Yield_kg
-        _bodyWeight            // Weight_kg
+      // Option A: send List<double> to match ApiService signature
+      final features = <double>[
+        _ageMonths.toDouble(), // age
+        _parity.toDouble(), // parity
+        _bodyTempCelsius.toDouble(), // temp (C)
+        _milkYieldKg.toDouble(), // milk
+        _bodyWeightKg.toDouble(), // weight
       ];
 
-      final response =
-      await ApiService.predictAnimalBirth(features: features);
+      final response = await ApiService.predictAnimalBirth(features: features);
 
       setState(() {
         _result = response;
@@ -77,7 +78,6 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-
               // HEADER CARD
               Container(
                 decoration: BoxDecoration(
@@ -96,10 +96,7 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
                     const SizedBox(height: 12),
                     Text(
                       "Predict Birth Timing",
-                      style: Theme.of(context)
-                          .textTheme
-                          .titleLarge
-                          ?.copyWith(
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: cs.onPrimaryContainer,
                       ),
@@ -118,78 +115,6 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
 
               const SizedBox(height: 24),
 
-              // TEMPERATURE
-              Text(
-                "Temperature: ${_temperatureFahrenheit.toStringAsFixed(1)}°F",
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              Slider(
-                value: _temperatureFahrenheit,
-                min: 98,
-                max: 104,
-                divisions: 60,
-                label: "${_temperatureFahrenheit.toStringAsFixed(1)}°F",
-                onChanged: (v) {
-                  setState(() => _temperatureFahrenheit = v);
-                },
-              ),
-
-              const SizedBox(height: 16),
-
-              // BODY WEIGHT
-              Text(
-                "Body Weight: ${_bodyWeight.toStringAsFixed(0)} kg",
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              Slider(
-                value: _bodyWeight,
-                min: 150,
-                max: 1000,
-                divisions: 850,
-                label: "${_bodyWeight.toStringAsFixed(0)} kg",
-                onChanged: (v) {
-                  setState(() => _bodyWeight = v);
-                },
-              ),
-
-              const SizedBox(height: 16),
-
-              // MILK YIELD
-              Text(
-                "Milk Yield: $_milkYield L",
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              Slider(
-                value: _milkYield.toDouble(),
-                min: 5,
-                max: 50,
-                divisions: 45,
-                label: "$_milkYield L",
-                onChanged: (v) {
-                  setState(() => _milkYield = v.toInt());
-                },
-              ),
-
-              const SizedBox(height: 16),
-
-              // PARITY
-              Text(
-                "Parity: ${_parity.toStringAsFixed(0)}",
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              Slider(
-                value: _parity,
-                min: 1,
-                max: 10,
-                divisions: 9,
-                label: _parity.toStringAsFixed(0),
-                onChanged: (v) {
-                  setState(() => _parity = v);
-                },
-              ),
-
-              const SizedBox(height: 16),
-
               // AGE
               Text(
                 "Age (Months): ${_ageMonths.toStringAsFixed(0)}",
@@ -201,9 +126,71 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
                 max: 200,
                 divisions: 199,
                 label: _ageMonths.toStringAsFixed(0),
-                onChanged: (v) {
-                  setState(() => _ageMonths = v);
-                },
+                onChanged: (v) => setState(() => _ageMonths = v),
+              ),
+
+              const SizedBox(height: 16),
+
+              // PARITY
+              Text(
+                "Parity: $_parity",
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              Slider(
+                value: _parity.toDouble(),
+                min: 1,
+                max: 10,
+                divisions: 9,
+                label: _parity.toString(),
+                onChanged: (v) => setState(() => _parity = v.round()),
+              ),
+
+              const SizedBox(height: 16),
+
+              // TEMP (Celsius)
+              Text(
+                "Body Temperature: ${_bodyTempCelsius.toStringAsFixed(1)} °C",
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              Slider(
+                value: _bodyTempCelsius,
+                min: 34.0,
+                max: 42.0,
+                divisions: 80,
+                label: "${_bodyTempCelsius.toStringAsFixed(1)} °C",
+                onChanged: (v) => setState(() => _bodyTempCelsius = v),
+              ),
+
+              const SizedBox(height: 16),
+
+              // MILK (kg)
+              Text(
+                "Milk Yield: ${_milkYieldKg.toStringAsFixed(1)} kg",
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              Slider(
+                value: _milkYieldKg,
+                min: 0,
+                max: 60,
+                divisions: 600,
+                label: "${_milkYieldKg.toStringAsFixed(1)} kg",
+                onChanged: (v) => setState(() => _milkYieldKg = v),
+              ),
+
+              const SizedBox(height: 16),
+
+              // WEIGHT (kg)
+              Text(
+                "Body Weight: ${_bodyWeightKg.toStringAsFixed(0)} kg",
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              Slider(
+                value: _bodyWeightKg,
+                min: 150,
+                max: 1000,
+                divisions: 850,
+                label: "${_bodyWeightKg.toStringAsFixed(0)} kg",
+                onChanged: (v) => setState(() => _bodyWeightKg = v),
               ),
 
               const SizedBox(height: 24),
@@ -218,9 +205,7 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
                     : const Icon(Icons.analytics),
-                label: Text(_isPredicting
-                    ? "Predicting..."
-                    : "Predict Birth"),
+                label: Text(_isPredicting ? "Predicting..." : "Predict Birth"),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
@@ -238,7 +223,6 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
                     padding: const EdgeInsets.all(20),
                     child: Column(
                       children: [
-
                         Row(
                           children: [
                             Icon(Icons.baby_changing_station,
@@ -255,17 +239,13 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
                             ),
                           ],
                         ),
-
                         const Divider(height: 24),
-
                         _buildResultItem(
                           "Will Birth in 2 Days",
                           _result!["will_birth_in_next_2_days"] ?? "N/A",
                           cs,
                         ),
-
                         const SizedBox(height: 12),
-
                         _buildResultItem(
                           "Estimated Days to Birth",
                           _result!["estimated_days_to_birth"]?.toString() ??
@@ -300,8 +280,7 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
           ),
         ),
         Container(
-          padding:
-          const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
           decoration: BoxDecoration(
             color: isYes
                 ? Colors.green.withOpacity(0.2)
