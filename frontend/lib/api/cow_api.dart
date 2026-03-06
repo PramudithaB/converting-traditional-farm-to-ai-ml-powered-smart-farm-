@@ -288,4 +288,27 @@ class CowApi {
     }
     return data;
   }
+
+  /// GET /api/cows/{id}/nutrition/latest
+  /// Returns the most recent NutritionRecommendation for the cow (including
+  /// input_data), or null if none exists yet.
+  static Future<Map<String, dynamic>?> getLatestNutrition(int cowDbId) async {
+    final token = await _getToken();
+    final uri = Uri.parse('$baseUrl/cows/$cowDbId/nutrition/latest');
+
+    final response = await http.get(
+      uri,
+      headers: {
+        'Accept': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    if (response.statusCode == 200) {
+      final body = jsonDecode(response.body);
+      if (body == null) return null;
+      return (body as Map).cast<String, dynamic>();
+    }
+    return null;
+  }
 }
