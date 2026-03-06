@@ -17,6 +17,7 @@ Route::post('/cows', [CowController::class, 'store']);
 Route::get('/cows/public', [CowController::class, 'indexWithoutEmbedding']);
 Route::post('/cows/identify', [CowController::class, 'identify']);
 Route::get('/cows/{cow}/profile', [CowController::class, 'profile']);
+Route::get('/cows/{cow}/nutrition/latest', [CowController::class, 'latestNutrition']);
 Route::get('/cows/{cow}', [CowController::class, 'show']);
 Route::put('/cows/{cow}', [CowController::class, 'update']);
 Route::delete('/cows/{cow}', [CowController::class, 'destroy']);

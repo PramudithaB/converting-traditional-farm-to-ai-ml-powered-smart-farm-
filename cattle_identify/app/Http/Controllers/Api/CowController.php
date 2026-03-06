@@ -342,6 +342,17 @@ class CowController extends Controller
     }
 
     /**
+     * GET /api/cows/{cow}/nutrition/latest
+     * Returns the most recent NutritionRecommendation for the given cow,
+     * including its input_data so the app can pre-fill the form.
+     */
+    public function latestNutrition(Cow $cow)
+    {
+        $latest = $cow->nutritionRecommendations()->latest()->first();
+        return response()->json($latest); // null → returns JSON null (200)
+    }
+
+    /**
      * Normalize previous_disease: accepts a string or array and always returns an array.
      * A null or empty value defaults to an empty array.
      */
