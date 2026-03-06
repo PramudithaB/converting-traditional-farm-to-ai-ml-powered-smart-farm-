@@ -3,11 +3,10 @@ import 'dart:io';
 
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/app_config.dart';
 
 class IdentifyCowApi {
-  // Change this if your API base URL changes
-  // Local Laravel server - WiFi IP for physical device
-  static const String baseUrl = 'http://192.168.8.100:8000/api';
+  static final String baseUrl = AppConfig.laravelApi;
 
   static Future<String> _getToken() async {
     final prefs = await SharedPreferences.getInstance();

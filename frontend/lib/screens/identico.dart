@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 
 import '../api/identify_cow_api.dart';
+import '../config/app_config.dart';
 
 class IdenticoScreen extends StatefulWidget {
   const IdenticoScreen({super.key});
@@ -242,7 +243,7 @@ class _IdenticoScreenState extends State<IdenticoScreen> {
                             ClipRRect(
                               borderRadius: BorderRadius.circular(12),
                               child: Image.network(
-                                'http://192.168.8.100:8000/${cow['image_path']}',
+                                '${AppConfig.laravelBase}/${cow['image_path']}',
                                 height: 180,
                                 width: double.infinity,
                                 fit: BoxFit.cover,

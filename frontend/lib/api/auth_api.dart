@@ -1,12 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import '../config/app_config.dart';
 
 class AuthApi {
-  // MUST match your Laravel API base URL for the device/emulator
-  // If you're using Postman successfully at http://192.168.1.51:8000/api/login,
-  // this value is correct:
-  // Local Laravel server - WiFi IP for physical device
-  static const String baseUrl = 'http://192.168.8.100:8000/api';
+  static final String baseUrl = AppConfig.laravelApi;
 
   static Future<Map<String, dynamic>> login({
     required String email,

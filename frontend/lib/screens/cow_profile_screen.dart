@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../api/cow_api.dart';
+import '../config/app_config.dart';
 
 class CowProfileScreen extends StatefulWidget {
   static const routeName = '/cow-profile';
@@ -172,7 +173,7 @@ class _CowProfileScreenState extends State<CowProfileScreen> {
           // Image
           img != null
               ? Image.network(
-                  'http://192.168.8.100:8000/$img',
+                  '${AppConfig.laravelBase}/$img',
                   height: 180,
                   width: double.infinity,
                   fit: BoxFit.cover,

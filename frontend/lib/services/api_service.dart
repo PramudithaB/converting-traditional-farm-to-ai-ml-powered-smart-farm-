@@ -1,12 +1,10 @@
 import 'dart:convert';
 import 'dart:io';
 import 'package:http/http.dart' as http;
+import '../config/app_config.dart';
 
 class ApiService {
-  // Base URL - WiFi IP of host machine (192.168.8.100) for physical device
-  // For physical device, use your computer's IP address (e.g., 192.168.8.100)
-  // For web (Chrome), use localhost
-  static const String baseUrl = 'http://192.168.8.100:5000';
+  static final String baseUrl = AppConfig.flaskBase;
   
   // Timeouts
   static const Duration timeout = Duration(seconds: 30);

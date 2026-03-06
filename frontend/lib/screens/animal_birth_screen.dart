@@ -10,24 +10,16 @@ class AnimalBirthScreen extends StatefulWidget {
 
 class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
   final _formKey = GlobalKey<FormState>();
+
   bool _isPredicting = false;
   Map<String, dynamic>? _result;
 
-  // Features for animal birth prediction
-  // Adjusted based on your requested ranges
+  // Model inputs
   double _temperatureFahrenheit = 101.5;
-
-  // Body weight: 350 – 1000 kg
-  double _bodyWeight = 350.0;
-
-  // Milk yield: 5 – 50 L (using _gestationDay variable as "milk yield" now)
+  double _bodyWeight = 150.0;
   int _milkYield = 5;
-
-  // Parity: 1 – 10 (unchanged)
-  double _udderSize = 5.0;
-
-  // Age in months: 1 – 200
-  double _ageMonths = 12.0;
+  double _parity = 2;
+  double _ageMonths = 12;
 
   Future<void> _predictBirth() async {
     if (!_formKey.currentState!.validate()) return;
@@ -38,15 +30,17 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
     });
 
     try {
+      // Correct order expected by Flask model
       final features = [
-        _temperatureFahrenheit,
-        _bodyWeight,
-        _milkYield.toDouble(),
-        _udderSize,
-        _ageMonths,
+        _ageMonths,            // Age_Months
+        _parity,               // Parity
+        _temperatureFahrenheit,// Body_Temp_C
+        _milkYield.toDouble(), // Milk_Yield_kg
+        _bodyWeight            // Weight_kg
       ];
 
-      final response = await ApiService.predictAnimalBirth(features: features);
+      final response =
+      await ApiService.predictAnimalBirth(features: features);
 
       setState(() {
         _result = response;
@@ -58,6 +52,7 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
       });
 
       if (!mounted) return;
+
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Prediction failed: $e'),
@@ -73,7 +68,7 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Animal Birth Prediction'),
+        title: const Text("Animal Birth Prediction"),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
@@ -82,6 +77,8 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+
+              // HEADER CARD
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -98,19 +95,19 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
                         size: 48, color: cs.onPrimaryContainer),
                     const SizedBox(height: 12),
                     Text(
-                      'Predict Birth Timing',
-                      style:
-                      Theme.of(context).textTheme.titleLarge?.copyWith(
-                        color: cs.onPrimaryContainer,
+                      "Predict Birth Timing",
+                      style: Theme.of(context)
+                          .textTheme
+                          .titleLarge
+                          ?.copyWith(
                         fontWeight: FontWeight.bold,
+                        color: cs.onPrimaryContainer,
                       ),
-                      textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
-                      'Enter animal health parameters to predict birth timing',
-                      style:
-                      Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      "Enter cow health parameters to predict birth timing",
+                      style: TextStyle(
                         color: cs.onPrimaryContainer.withOpacity(0.8),
                       ),
                       textAlign: TextAlign.center,
@@ -118,75 +115,84 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
                   ],
                 ),
               ),
+
               const SizedBox(height: 24),
 
-              // Temperature
+              // TEMPERATURE
               Text(
-                'Temperature: ${_temperatureFahrenheit.toStringAsFixed(1)}°F',
+                "Temperature: ${_temperatureFahrenheit.toStringAsFixed(1)}°F",
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               Slider(
                 value: _temperatureFahrenheit,
-                min: 98.0,
-                max: 104.0,
+                min: 98,
+                max: 104,
                 divisions: 60,
-                label: '${_temperatureFahrenheit.toStringAsFixed(1)}°F',
-                onChanged: (value) =>
-                    setState(() => _temperatureFahrenheit = value),
+                label: "${_temperatureFahrenheit.toStringAsFixed(1)}°F",
+                onChanged: (v) {
+                  setState(() => _temperatureFahrenheit = v);
+                },
               ),
+
               const SizedBox(height: 16),
 
-              // Body Weight 350–1000 kg
+              // BODY WEIGHT
               Text(
-                'Body Weight: ${_bodyWeight.toStringAsFixed(0)} kg',
+                "Body Weight: ${_bodyWeight.toStringAsFixed(0)} kg",
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               Slider(
                 value: _bodyWeight,
-                min: 350,
+                min: 150,
                 max: 1000,
-                divisions: 650, // 1 kg step
-                label: '${_bodyWeight.toStringAsFixed(0)} kg',
-                onChanged: (value) =>
-                    setState(() => _bodyWeight = value),
+                divisions: 850,
+                label: "${_bodyWeight.toStringAsFixed(0)} kg",
+                onChanged: (v) {
+                  setState(() => _bodyWeight = v);
+                },
               ),
+
               const SizedBox(height: 16),
 
-              // Milk Yield 5–50 L
+              // MILK YIELD
               Text(
-                'Milk Yield: $_milkYield L',
+                "Milk Yield: $_milkYield L",
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               Slider(
                 value: _milkYield.toDouble(),
                 min: 5,
                 max: 50,
-                divisions: 45, // 1 L step
-                label: '$_milkYield L',
-                onChanged: (value) =>
-                    setState(() => _milkYield = value.toInt()),
+                divisions: 45,
+                label: "$_milkYield L",
+                onChanged: (v) {
+                  setState(() => _milkYield = v.toInt());
+                },
               ),
+
               const SizedBox(height: 16),
 
-              // Parity (kept same meaning as your text)
+              // PARITY
               Text(
-                'Parity: ${_udderSize.toStringAsFixed(1)}/10',
+                "Parity: ${_parity.toStringAsFixed(0)}",
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               Slider(
-                value: _udderSize,
+                value: _parity,
                 min: 1,
                 max: 10,
                 divisions: 9,
-                label: _udderSize.toStringAsFixed(1),
-                onChanged: (value) =>
-                    setState(() => _udderSize = value),
+                label: _parity.toStringAsFixed(0),
+                onChanged: (v) {
+                  setState(() => _parity = v);
+                },
               ),
+
               const SizedBox(height: 16),
 
-              // Age Months 1–200
+              // AGE
               Text(
-                'Age Months: ${_ageMonths.toStringAsFixed(0)} / 200',
+                "Age (Months): ${_ageMonths.toStringAsFixed(0)}",
                 style: Theme.of(context).textTheme.titleMedium,
               ),
               Slider(
@@ -195,47 +201,51 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
                 max: 200,
                 divisions: 199,
                 label: _ageMonths.toStringAsFixed(0),
-                onChanged: (value) =>
-                    setState(() => _ageMonths = value),
+                onChanged: (v) {
+                  setState(() => _ageMonths = v);
+                },
               ),
+
               const SizedBox(height: 24),
 
+              // PREDICT BUTTON
               ElevatedButton.icon(
                 onPressed: _isPredicting ? null : _predictBirth,
                 icon: _isPredicting
                     ? const SizedBox(
-                  width: 16,
                   height: 16,
+                  width: 16,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
                     : const Icon(Icons.analytics),
-                label: Text(
-                    _isPredicting ? 'Predicting...' : 'Predict Birth'),
+                label: Text(_isPredicting
+                    ? "Predicting..."
+                    : "Predict Birth"),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(vertical: 16),
                 ),
               ),
 
-              if (_result != null) ...[
-                const SizedBox(height: 24),
+              const SizedBox(height: 24),
+
+              // RESULT CARD
+              if (_result != null)
                 Card(
                   elevation: 4,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
+                      borderRadius: BorderRadius.circular(16)),
                   child: Padding(
                     padding: const EdgeInsets.all(20),
                     child: Column(
-                      crossAxisAlignment:
-                      CrossAxisAlignment.start,
                       children: [
+
                         Row(
                           children: [
                             Icon(Icons.baby_changing_station,
-                                color: cs.primary, size: 32),
-                            const SizedBox(width: 12),
+                                size: 30, color: cs.primary),
+                            const SizedBox(width: 10),
                             Text(
-                              'Prediction Results',
+                              "Prediction Results",
                               style: Theme.of(context)
                                   .textTheme
                                   .titleLarge
@@ -245,18 +255,27 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
                             ),
                           ],
                         ),
+
                         const Divider(height: 24),
+
                         _buildResultItem(
-                          'Will Birth in 2 Days',
-                          _result!['Will Birth in Next 2 Days'] ??
-                              'N/A',
+                          "Will Birth in 2 Days",
+                          _result!["will_birth_in_next_2_days"] ?? "N/A",
+                          cs,
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        _buildResultItem(
+                          "Estimated Days to Birth",
+                          _result!["estimated_days_to_birth"]?.toString() ??
+                              "N/A",
                           cs,
                         ),
                       ],
                     ),
                   ),
                 ),
-              ],
             ],
           ),
         ),
@@ -264,51 +283,47 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
     );
   }
 
-  Widget _buildResultItem(
-      String label, String value, ColorScheme cs) {
-    final isPositive = value.toLowerCase().contains('yes');
-    final isNegative = value.toLowerCase().contains('no');
+  Widget _buildResultItem(String label, dynamic value, ColorScheme cs) {
+    final text = value.toString();
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment:
-        MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
+    final isYes = text.toLowerCase().contains("yes");
+    final isNo = text.toLowerCase().contains("no");
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 16,
+            color: cs.onSurface.withOpacity(0.7),
+          ),
+        ),
+        Container(
+          padding:
+          const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+          decoration: BoxDecoration(
+            color: isYes
+                ? Colors.green.withOpacity(0.2)
+                : isNo
+                ? Colors.orange.withOpacity(0.2)
+                : cs.primaryContainer,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Text(
+            text,
             style: TextStyle(
-              fontSize: 16,
-              color: cs.onSurface.withOpacity(0.7),
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(
-                horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: isPositive
-                  ? Colors.green.withOpacity(0.2)
-                  : isNegative
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: isYes
+                  ? Colors.green
+                  : isNo
                   ? Colors.orange
-                  .withOpacity(0.2)
-                  : cs.primaryContainer,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: isPositive
-                    ? Colors.green
-                    : isNegative
-                    ? Colors.orange
-                    : cs.primary,
-              ),
+                  : cs.primary,
             ),
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

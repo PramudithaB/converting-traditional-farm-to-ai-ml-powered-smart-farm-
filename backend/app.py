@@ -71,10 +71,12 @@ class CattleDiseaseConfig:
 # ==================== Animal Birth Models ====================
 try:
     animal_birth_model = joblib.load("animal_birth/clf.pkl")
+    animal_birth_reg = joblib.load("animal_birth/reg.pkl")
     print("✓ Animal Birth model loaded")
 except Exception as e:
     print(f"✗ Animal Birth model failed: {e}")
     animal_birth_model = None
+    animal_birth_reg = None
 
 # ==================== Cow Identification Models ====================
 try:
@@ -230,6 +232,35 @@ except Exception as e:
     cattle_behavior_collector = None
     cattle_behavior_analyzer = None
 
+
+# ==================== YOLO Feed Weight Detection ====================
+
+feed_model_cached = None
+le_breed_cached = None
+le_activity_cached = None
+yolo_feed_model = None
+
+
+def get_feed_model_and_encoders():
+    global feed_model_cached, le_breed_cached, le_activity_cached
+
+    if feed_model_cached is None:
+        feed_model_cached = cow_feed_model
+        le_breed_cached = cow_feed_breed_encoder
+        le_activity_cached = cow_feed_activity_encoder
+
+    return feed_model_cached, le_breed_cached, le_activity_cached
+
+
+def get_yolo_model():
+    global yolo_feed_model
+
+    if yolo_feed_model is None:
+        yolo_feed_model = YOLO("cow_weight/best.pt")
+
+    return yolo_feed_model
+
+
 # ==================== Helper Functions ====================
 
 def extract_cow_embedding(face_img):
@@ -383,21 +414,44 @@ def health():
     })
 
 # ==================== Animal Birth Prediction ====================
+
 @app.route("/animal-birth/predict", methods=["POST"])
 def predict_animal_birth():
-    if animal_birth_model is None:
-        return jsonify({"error": "Animal birth model not loaded"}), 503
-    
+
+    if animal_birth_model is None or animal_birth_reg is None:
+        return jsonify({"error": "Animal birth models not loaded"}), 503
+
     try:
         data = request.get_json()
-        features = np.array(data["features"]).reshape(1, -1)
-        predicted_days = float(animal_birth_model.predict(features)[0])
-        will_birth_2_days = "Yes" if predicted_days <= 2 else "No"
-        
+
+        # Expecting: [age, parity, temp, milk, weight]
+        if not data or len(data) != 5:
+            return jsonify({
+                "error": "Input must be [age, parity, temp, milk, weight]"
+            }), 400
+
+        df = pd.DataFrame(
+            [data],
+            columns=[
+                "Age_Months",
+                "Parity",
+                "Body_Temp_C",
+                "Milk_Yield_kg",
+                "Weight_kg"
+            ]
+        )
+
+        # Classification → birth in next 2 days
+        birth_next2 = int(animal_birth_model.predict(df)[0])
+
+        # Regression → estimated days
+        days_to_birth = float(animal_birth_reg.predict(df)[0])
+
         return jsonify({
-            "Will Birth in Next 2 Days": will_birth_2_days,
-            "Estimated Days to Birth": round(predicted_days, 1)
+            "will_birth_in_next_2_days": "YES" if birth_next2 == 1 else "NO",
+            "estimated_days_to_birth": round(days_to_birth, 2)
         })
+
     except Exception as e:
         return jsonify({"error": str(e)}), 400
 
@@ -433,47 +487,75 @@ def detect_cow():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-# ==================== Cow Daily Feed (From Image) ====================
 @app.route("/cow-feed/predict-from-image", methods=["POST"])
-def predict_cow_feed_from_image():
-    if cow_feed_model is None:
-        return jsonify({"error": "Cow feed model not loaded"}), 503
-    
+def predict_from_image():
+
+    img_path = None
+
     try:
-        img_file = request.files["image"]
-        img_path = os.path.join(UPLOAD_FOLDER, "temp_feed.jpg")
-        img_file.save(img_path)
-        
+        if "image" not in request.files:
+            return jsonify({"error": "Image required"}), 400
+
+        file = request.files["image"]
+        filename = str(uuid.uuid4()) + ".jpg"
+        img_path = os.path.join(UPLOAD_FOLDER, filename)
+        file.save(img_path)
+
+        feed_model, le_breed, le_activity = get_feed_model_and_encoders()
+        yolo_model = get_yolo_model()
+
         cow_breed = request.form.get("breed").strip().title()
         cow_age = float(request.form.get("age"))
         milk_yield = float(request.form.get("milk_yield"))
         activity = request.form.get("activity").strip().title()
-        
-        # Validate
-        if cow_breed not in cow_feed_breed_encoder.classes_:
+
+        if cow_breed not in le_breed.classes_:
             return jsonify({
-                "error": f"Invalid breed. Allowed: {list(cow_feed_breed_encoder.classes_)}"
+                "error": f"Invalid breed. Allowed: {list(le_breed.classes_)}"
             }), 400
-        
-        if activity not in cow_feed_activity_encoder.classes_:
+
+        if activity not in le_activity.classes_:
             return jsonify({
-                "error": f"Invalid activity. Allowed: {list(cow_feed_activity_encoder.classes_)}"
+                "error": f"Invalid activity. Allowed: {list(le_activity.classes_)}"
             }), 400
-        
-        # Encode
-        encoded_breed = cow_feed_breed_encoder.transform([cow_breed])[0]
-        encoded_activity = cow_feed_activity_encoder.transform([activity])[0]
-        
-        # Segmentation
-        input_image = process_image(img_path)
-        predicted_mask = cow_feed_seg_model.predict(input_image)
-        predicted_mask = predicted_mask[..., :1]
-        
-        # Weight prediction
-        predicted_weight = cow_feed_reg_model.predict(predicted_mask)
-        cow_weight = float(predicted_weight[0][0])
-        
-        # Feed prediction
+
+        encoded_breed = le_breed.transform([cow_breed])[0]
+        encoded_activity = le_activity.transform([activity])[0]
+
+        results = yolo_model.predict(
+            source=img_path,
+            conf=0.05,
+            save=False,
+            verbose=False
+        )
+
+        cow_weight = None
+
+        for r in results:
+            if r.boxes is None or len(r.boxes) == 0:
+                continue
+
+            cls_id = int(r.boxes.cls[0])
+            class_name = yolo_model.names[cls_id]
+
+            try:
+                if "-kg" in class_name:
+                    weight_part = class_name.replace("-kg", "")
+                    min_w, max_w = weight_part.split("-")
+
+                    min_w = float(min_w) * 3
+                    max_w = float(max_w) * 3
+
+                    cow_weight = round(random.uniform(min_w, max_w), 2)
+
+            except Exception:
+                pass
+
+            break
+
+        if cow_weight is None:
+            return jsonify({"error": "Cow not detected"}), 400
+
         feed_input = pd.DataFrame([{
             "Cow Breed": encoded_breed,
             "Cow Age (months)": cow_age,
@@ -481,18 +563,83 @@ def predict_cow_feed_from_image():
             "Milk Yield (L/day)": milk_yield,
             "Activity Level": encoded_activity
         }])
-        
-        daily_feed = float(cow_feed_model.predict(feed_input)[0])
-        
+
+        daily_feed = float(feed_model.predict(feed_input)[0])
+
         os.remove(img_path)
-        
+
         return jsonify({
             "mode": "image",
-            "cow_weight_kg": round(cow_weight, 2),
+            "cow_weight_kg": cow_weight,
             "daily_feed_kg": round(daily_feed, 2)
         })
+
     except Exception as e:
+        if img_path and os.path.exists(img_path):
+            os.remove(img_path)
+
         return jsonify({"error": str(e)}), 500
+    
+# ==================== Cow Daily Feed (From Image) ====================
+# @app.route("/cow-feed/predict-from-image", methods=["POST"])
+# def predict_cow_feed_from_image():
+#     if cow_feed_model is None:
+#         return jsonify({"error": "Cow feed model not loaded"}), 503
+    
+#     try:
+#         img_file = request.files["image"]
+#         img_path = os.path.join(UPLOAD_FOLDER, "temp_feed.jpg")
+#         img_file.save(img_path)
+        
+#         cow_breed = request.form.get("breed").strip().title()
+#         cow_age = float(request.form.get("age"))
+#         milk_yield = float(request.form.get("milk_yield"))
+#         activity = request.form.get("activity").strip().title()
+        
+#         # Validate
+#         if cow_breed not in cow_feed_breed_encoder.classes_:
+#             return jsonify({
+#                 "error": f"Invalid breed. Allowed: {list(cow_feed_breed_encoder.classes_)}"
+#             }), 400
+        
+#         if activity not in cow_feed_activity_encoder.classes_:
+#             return jsonify({
+#                 "error": f"Invalid activity. Allowed: {list(cow_feed_activity_encoder.classes_)}"
+#             }), 400
+        
+        
+#         encoded_breed = cow_feed_breed_encoder.transform([cow_breed])[0]
+#         encoded_activity = cow_feed_activity_encoder.transform([activity])[0]
+        
+#         # Segmentation
+#         input_image = process_image(img_path)
+#         predicted_mask = cow_feed_seg_model.predict(input_image)
+#         predicted_mask = predicted_mask[..., :1]
+        
+#         # Weight prediction
+#         predicted_weight = cow_feed_reg_model.predict(predicted_mask)
+#         cow_weight = float(predicted_weight[0][0])
+        
+#         # Feed prediction
+#         feed_input = pd.DataFrame([{
+#             "Cow Breed": encoded_breed,
+#             "Cow Age (months)": cow_age,
+#             "Cow Weight (kg)": cow_weight,
+#             "Milk Yield (L/day)": milk_yield,
+#             "Activity Level": encoded_activity
+#         }])
+        
+#         daily_feed = float(cow_feed_model.predict(feed_input)[0])
+        
+#         os.remove(img_path)
+        
+#         return jsonify({
+#             "mode": "image",
+#             "cow_weight_kg": round(cow_weight, 2),
+#             "daily_feed_kg": round(daily_feed, 2)
+#         })
+#     except Exception as e:
+#         return jsonify({"error": str(e)}), 500
 
 # ==================== Cow Daily Feed (Manual) ====================
 @app.route("/cow-feed/predict-manual", methods=["POST"])

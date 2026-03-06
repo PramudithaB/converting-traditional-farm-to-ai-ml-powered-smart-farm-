@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../api/cow_api.dart';
+import '../config/app_config.dart';
 import '../api/prediction_api.dart';
 import 'add_cow_screen.dart';
 import 'login_screen.dart';
@@ -368,7 +369,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
             child: img != null
                 ? Image.network(
-                    'http://192.168.8.100:8000/$img',
+                    '${AppConfig.laravelBase}/$img',
                     height: 100,
                     width: double.infinity,
                     fit: BoxFit.cover,

@@ -1,11 +1,12 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../config/app_config.dart';
 
 /// API client that saves prediction results to the Laravel smartfarm database.
 /// All endpoints: POST /api/predictions/{type} and GET /api/predictions/{type}
 class PredictionApi {
-  static const String baseUrl = 'http://192.168.8.100:8000/api';
+  static final String baseUrl = AppConfig.laravelApi;
 
   static Future<Map<String, String>> _headers() async {
     final prefs = await SharedPreferences.getInstance();
