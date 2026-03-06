@@ -82,7 +82,7 @@ class _FeedScreenState extends State<FeedScreen> {
         final months = (now.year - birth.year) * 12 + now.month - birth.month;
         _age = months.clamp(12, 120); // keep within slider range
       } catch (_) {
-        _age = 36;
+        _age = 36 ;
       }
     } else {
       _age = 36;
@@ -135,7 +135,7 @@ class _FeedScreenState extends State<FeedScreen> {
             ),
             ListTile(
               leading: const Icon(Icons.photo_library),
-              title: const Text('Gallery'),
+              title: const Text('Gallery '),
               onTap: () {
                 Navigator.pop(context);
                 _pickFeedImage(ImageSource.gallery);
