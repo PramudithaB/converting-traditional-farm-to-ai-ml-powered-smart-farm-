@@ -67,6 +67,7 @@ class PredictionController extends Controller
     {
         return response()->json(
             DiseaseDetection::where('user_id', $request->user()?->id)
+                ->with(['cow:id,cow_id,name'])
                 ->orderByDesc('created_at')->get()
         );
     }
@@ -92,6 +93,7 @@ class PredictionController extends Controller
     {
         return response()->json(
             BehaviorDetection::where('user_id', $request->user()?->id)
+                ->with(['cow:id,cow_id,name'])
                 ->orderByDesc('created_at')->get()
         );
     }

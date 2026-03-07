@@ -233,6 +233,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         ? Icons.check_circle_outline
         : (isDisease ? Icons.medical_services : Icons.directions_walk);
 
+    final cow = alert['cow'] as Map<String, dynamic>?;
+    final cowLabel = cow != null
+        ? '${cow['cow_id'] ?? ''}  ${cow['name'] ?? ''}'.trim()
+        : null;
+
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
@@ -268,18 +273,36 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         .textTheme
                         .labelSmall
                         ?.copyWith(color: cs.onSurfaceVariant)),
+                if (cowLabel != null && cowLabel.isNotEmpty) ...[
+                  const SizedBox(height: 3),
+                  Row(
+                    children: [
+                      Icon(Icons.pets, size: 11, color: cs.primary.withOpacity(0.7)),
+                      const SizedBox(width: 3),
+                      Text(
+                        cowLabel,
+                        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                              color: cs.primary,
+                              fontWeight: FontWeight.w600,
+                              fontSize: 10,
+                            ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ),
-          Chip(
-            label: Text(
-              isDisease ? 'Disease' : 'Behavior',
-              style: const TextStyle(fontSize: 10),
+          if (!isDisease)
+            Chip(
+              label: Text(
+                'Behavior',
+                style: const TextStyle(fontSize: 10),
+              ),
+              backgroundColor: color.withOpacity(0.12),
+              padding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
             ),
-            backgroundColor: color.withOpacity(0.12),
-            padding: EdgeInsets.zero,
-            visualDensity: VisualDensity.compact,
-          ),
         ],
       ),
     );
@@ -583,8 +606,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                             Chip(
                               label: Text('$_diseaseAlerts active',
                                   style: const TextStyle(fontSize: 11)),
-                              backgroundColor: Colors.red.shade50,
-                              side: BorderSide(color: Colors.red.shade200),
+                              backgroundColor: const ui.Color.fromARGB(255, 11, 11, 11),
+                              side: BorderSide(color: const ui.Color.fromARGB(255, 240, 212, 3)),
                               visualDensity: VisualDensity.compact,
                               padding: EdgeInsets.zero,
                             ),
