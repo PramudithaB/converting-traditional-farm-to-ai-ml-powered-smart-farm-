@@ -16,6 +16,7 @@ import 'identico.dart';
 import 'disease_detection_screen.dart';
 import 'complete_disease_analysis_screen.dart';
 import 'behavior_detection_screen.dart';
+import 'milk_prediction_history_screen.dart';
 import 'model_comparison_screen.dart';
 import 'video_analysis_screen.dart';
 import 'nutrition_screen.dart';
@@ -712,6 +713,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _ComponentItem('Milk Market Analyzer', Icons.show_chart,
         Colors.blue.shade600,
         () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MarketScreen()))),
+    _ComponentItem('Milk Prediction History', Icons.history,
+        Colors.cyan.shade700,
+        () => Navigator.push(context, MaterialPageRoute(builder: (_) => const MilkPredictionHistoryScreen()))),
     _ComponentItem('Cow Feed Calculator', Icons.restaurant,
         Colors.green.shade600,
         () => Navigator.push(context, MaterialPageRoute(builder: (_) => const FeedScreen()))),
