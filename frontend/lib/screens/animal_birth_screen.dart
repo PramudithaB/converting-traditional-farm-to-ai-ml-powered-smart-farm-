@@ -71,11 +71,11 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
       } catch (_) {}
     }
 
-    // Parity from lactation_month (best available proxy for number of calvings)
-    final lm = cow['lactation_month'];
-    if (lm != null) {
-      final lmVal = lm is int ? lm : int.tryParse(lm.toString());
-      if (lmVal != null && lmVal >= 0 && lmVal <= 10) _parity = lmVal;
+    // Parity = number of times the cow has calved (stored as its own field)
+    final p = cow['parity'];
+    if (p != null) {
+      final pVal = p is int ? p : int.tryParse(p.toString());
+      if (pVal != null && pVal >= 0 && pVal <= 10) _parity = pVal;
     }
   }
 

@@ -136,6 +136,7 @@ class CowApi {
     String? breed,
     String? birthdate,
     int? lactationMonth,
+    int? parity,
     double? weight,
   }) async {
     final token = await _getToken();
@@ -151,6 +152,7 @@ class CowApi {
     if (lactationMonth != null) {
       request.fields['lactation_month'] = lactationMonth.toString();
     }
+    if (parity != null) request.fields['parity'] = parity.toString();
     if (weight != null) request.fields['weight'] = weight.toString();
 
     request.files.add(

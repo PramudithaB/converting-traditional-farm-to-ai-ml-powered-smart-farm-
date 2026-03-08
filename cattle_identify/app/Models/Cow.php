@@ -12,6 +12,7 @@ class Cow extends Model
         'name',
         'breed',
         'lactation_month',
+        'parity',
         'weight',
         'previous_disease',
         'image_path',

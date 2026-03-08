@@ -49,6 +49,7 @@ class _AddCowScreenState extends State<AddCowScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameCtrl = TextEditingController();
   final _lmCtrl = TextEditingController();
+  final _parityCtrl = TextEditingController();
   final _weightCtrl = TextEditingController();
 
   String? _selectedBreed;
@@ -119,6 +120,9 @@ class _AddCowScreenState extends State<AddCowScreen> {
         lactationMonth: _lmCtrl.text.trim().isEmpty
             ? null
             : int.tryParse(_lmCtrl.text.trim()),
+        parity: _parityCtrl.text.trim().isEmpty
+            ? null
+            : int.tryParse(_parityCtrl.text.trim()),
         weight: _weightCtrl.text.trim().isEmpty
             ? null
             : double.tryParse(_weightCtrl.text.trim()),
@@ -140,6 +144,7 @@ class _AddCowScreenState extends State<AddCowScreen> {
   void dispose() {
     _nameCtrl.dispose();
     _lmCtrl.dispose();
+    _parityCtrl.dispose();
     _weightCtrl.dispose();
     super.dispose();
   }
@@ -395,6 +400,44 @@ class _AddCowScreenState extends State<AddCowScreen> {
                                   return 'Enter a valid weight';
                                 return null;
                               },
+                            ),
+                            const SizedBox(height: 12),
+
+                            // ── Parity ───────────────────────────────────────
+                            TextFormField(
+                              controller: _parityCtrl,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: _fieldDecor(
+                                  'Parity (number of calvings)', Icons.child_friendly),
+                              keyboardType: TextInputType.number,
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty)
+                                  return null; // optional
+                                final n = int.tryParse(v);
+                                if (n == null || n < 0 || n > 20)
+                                  return 'Enter a number between 0 and 20';
+                                return null;
+                              },
+                            ),
+                            // ── Parity hint ──────────────────────────────────
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  top: 4, left: 4, bottom: 4),
+                              child: Row(
+                                children: const [
+                                  Icon(Icons.info_outline,
+                                      color: Colors.white54, size: 13),
+                                  SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      'Parity = total number of times this cow has calved (0 = never calved).',
+                                      style: TextStyle(
+                                          color: Colors.white54,
+                                          fontSize: 11),
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
                             const SizedBox(height: 12),
 
