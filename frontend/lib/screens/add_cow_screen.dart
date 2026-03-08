@@ -12,36 +12,23 @@ class AddCowScreen extends StatefulWidget {
   State<AddCowScreen> createState() => _AddCowScreenState();
 }
 
-/// Common cattle breeds – dairy, beef, and South Asian varieties.
+/// Cattle breeds commonly found on Sri Lankan farms.
 const List<String> _cattleBreeds = [
-  'Holstein / Holstein-Friesian',
+  // ── Dairy breeds widely used in Sri Lanka ──
+  'Friesian',
   'Jersey',
   'Ayrshire',
   'Brown Swiss',
-  'Guernsey',
-  'Milking Shorthorn',
-  'Friesian',
+  // ── South Asian breeds popular in Sri Lanka ──
   'Sahiwal',
-  'Tharparkar',
-  'Gir (Gyr)',
-  'Hariana',
   'Red Sindhi',
+  'Gir (Gyr)',
+  'Tharparkar',
   'Ongole',
-  'Kankrej',
-  'Deoni',
-  'Angus',
-  'Hereford',
-  'Simmental',
-  'Limousin',
-  'Charolais',
-  'Brahman',
-  'Shorthorn',
-  'Belted Galloway',
-  'Highland',
-  'Dexter',
-  'Nelore',
-  'Zebu',
+  // ── Indigenous / local breeds ──
   'Lanka White (Sinhala)',
+  'Local',
+  // ── Fallback ──
   'Other',
 ];
 

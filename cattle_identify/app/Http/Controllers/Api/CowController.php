@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Cow;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
@@ -13,12 +14,11 @@ class CowController extends Controller
 {
     /**
      * GET /api/cows
+     * Returns ALL cows on the farm (all users share the same herd).
      */
     public function index(Request $request)
     {
-        return response()->json(
-            Cow::where('user_id', $request->user()->id)->get()
-        );
+        return response()->json(Cow::all());
     }
 
     /**
@@ -27,8 +27,9 @@ class CowController extends Controller
      */
     public function nextCowId(Request $request)
     {
+        // Scan ALL cows (across all users) so the preview ID is globally unique.
         $maxNum = 0;
-        Cow::select('cow_id')->where('user_id', $request->user()->id)->get()->each(function ($c) use (&$maxNum) {
+        Cow::select('cow_id')->get()->each(function ($c) use (&$maxNum) {
             if (preg_match('/^COW-(\d+)$/i', $c->cow_id, $m)) {
                 $maxNum = max($maxNum, (int) $m[1]);
             }
@@ -54,14 +55,20 @@ class CowController extends Controller
             'image'            => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
         ]);
 
-        // Auto-generate unique cow_id (scoped per user)
-        $maxNum = 0;
-        Cow::select('cow_id')->where('user_id', $request->user()->id)->get()->each(function ($c) use (&$maxNum) {
-            if (preg_match('/^COW-(\d+)$/i', $c->cow_id, $m)) {
-                $maxNum = max($maxNum, (int) $m[1]);
-            }
-        });
-        $cowId = 'COW-' . str_pad($maxNum + 1, 3, '0', STR_PAD_LEFT);
+        // Auto-generate a globally unique cow_id using a DB lock to prevent
+        // race conditions between concurrent requests.
+        DB::statement('LOCK TABLES cows WRITE');
+        try {
+            $maxNum = 0;
+            Cow::select('cow_id')->get()->each(function ($c) use (&$maxNum) {
+                if (preg_match('/^COW-(\d+)$/i', $c->cow_id, $m)) {
+                    $maxNum = max($maxNum, (int) $m[1]);
+                }
+            });
+            $cowId = 'COW-' . str_pad($maxNum + 1, 3, '0', STR_PAD_LEFT);
+        } finally {
+            DB::statement('UNLOCK TABLES');
+        }
 
         // Get the uploaded file ONCE
         $uploadedFile = $request->file('image'); // instance of UploadedFile

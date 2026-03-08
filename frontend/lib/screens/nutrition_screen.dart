@@ -35,12 +35,14 @@ class _NutritionScreenState extends State<NutritionScreen> {
   String _feedType = 'Mixed';
 
   List<String> _breeds = [
-    'Holstein / Holstein-Friesian', 'Holstein', 'Jersey', 'Ayrshire', 'Brown Swiss',
-    'Guernsey', 'Milking Shorthorn', 'Friesian', 'Sahiwal', 'Tharparkar',
-    'Gir (Gyr)', 'Hariana', 'Red Sindhi', 'Ongole', 'Kankrej', 'Deoni',
-    'Angus', 'Hereford', 'Simmental', 'Limousin', 'Charolais', 'Brahman',
-    'Shorthorn', 'Belted Galloway', 'Highland', 'Dexter', 'Nelore', 'Zebu',
-    'Lanka White (Sinhala)', 'Other',
+    // ── Dairy breeds widely used in Sri Lanka ──
+    'Friesian', 'Jersey', 'Ayrshire', 'Brown Swiss',
+    // ── South Asian breeds popular in Sri Lanka ──
+    'Sahiwal', 'Red Sindhi', 'Gir (Gyr)', 'Tharparkar', 'Ongole',
+    // ── Indigenous / local breeds ──
+    'Lanka White (Sinhala)', 'Local',
+    // ── Fallback ──
+    'Other',
   ];
   final List<String> _activityLevels = ['Medium', 'High'];
   final List<String> _healthStatuses = ['Healthy', 'Disease', 'Recovering'];

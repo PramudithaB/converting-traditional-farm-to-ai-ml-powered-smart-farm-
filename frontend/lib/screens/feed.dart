@@ -27,7 +27,7 @@ class _FeedScreenState extends State<FeedScreen> {
   Map<String, dynamic>? _result;
 
   // Inputs to prediction
-  String _breed = 'Holstein';
+  String _breed = 'Friesian';
   double _weight = 600.0;
   int _age = 36; // months
   double _milkYield = 25.0; // L/day
