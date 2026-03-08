@@ -151,6 +151,46 @@ class _CowProfileScreenState extends State<CowProfileScreen> {
     );
   }
 
+  /// Shows [items] directly when ≤5; otherwise wraps in a scrollable box.
+  Widget _scrollableList(List<Widget> items) {
+    const int maxVisible = 5;
+    if (items.length <= maxVisible) {
+      return Column(children: items);
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          height: 420,
+          decoration: BoxDecoration(
+            border: Border.all(color: Colors.grey.shade200),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(12),
+            child: ListView(
+              physics: const ClampingScrollPhysics(),
+              padding: const EdgeInsets.only(top: 4),
+              children: items,
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.expand_more, size: 15, color: Colors.grey.shade500),
+            const SizedBox(width: 4),
+            Text(
+              'Scroll to see all ${items.length} records',
+              style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   // ─── cow header card ───────────────────────────────────────────────────────
 
   Widget _buildHeader(Map<String, dynamic> cow, String healthStatus, dynamic ageMonths) {
@@ -351,8 +391,7 @@ class _CowProfileScreenState extends State<CowProfileScreen> {
 
   Widget _buildDiseaseDetections(List detections) {
     if (detections.isEmpty) return _emptyState('No disease detections yet');
-    return Column(
-      children: detections.map<Widget>((d) {
+    final items = detections.map<Widget>((d) {
         final name = d['disease_name']?.toString() ?? 'Unknown';
         final conf = ((d['confidence'] as num?)?.toDouble() ?? 0) * 100;
         final model = d['model_used']?.toString() ?? '';
@@ -389,8 +428,8 @@ class _CowProfileScreenState extends State<CowProfileScreen> {
             ],
           ),
         );
-      }).toList(),
-    );
+    }).toList();
+    return _scrollableList(items);
   }
 
   Widget _severityChip(String? level) {
@@ -414,8 +453,7 @@ class _CowProfileScreenState extends State<CowProfileScreen> {
   Widget _buildBehaviorDetections(List detections) {
     final filtered = detections.where((d) => d['behavior'] != null && d['behavior'].toString().isNotEmpty).toList();
     if (filtered.isEmpty) return _emptyState('No behavior detections yet');
-    return Column(
-      children: filtered.map<Widget>((d) {
+    final items = filtered.map<Widget>((d) {
         final behavior = d['behavior']?.toString() ?? 'Unknown';
         final conf = ((d['confidence'] as num?)?.toDouble() ?? 0) * 100;
         final type = d['detection_type']?.toString() ?? '';
@@ -447,16 +485,15 @@ class _CowProfileScreenState extends State<CowProfileScreen> {
             ],
           ),
         );
-      }).toList(),
-    );
+    }).toList();
+    return _scrollableList(items);
   }
 
   // ─── feed records ──────────────────────────────────────────────────────────
 
   Widget _buildFeedRecords(List feeds) {
     if (feeds.isEmpty) return _emptyState('No feed records yet');
-    return Column(
-      children: feeds.map<Widget>((f) {
+    final items = feeds.map<Widget>((f) {
         final date = _formatDate(f['created_at']?.toString());
         final rawW = f['cow_weight_kg'];
         final weight = rawW != null
@@ -504,16 +541,15 @@ class _CowProfileScreenState extends State<CowProfileScreen> {
             ],
           ),
         );
-      }).toList(),
-    );
+    }).toList();
+    return _scrollableList(items);
   }
 
   // ─── birth predictions ─────────────────────────────────────────────────────
 
   Widget _buildBirthPredictions(List births) {
     if (births.isEmpty) return _emptyState('No birth predictions yet');
-    return Column(
-      children: births.map<Widget>((b) {
+    final items = births.map<Widget>((b) {
         final rawDays = b['estimated_days_to_birth'];
         final hours = rawDays != null
             ? (rawDays is num ? rawDays : double.tryParse(rawDays.toString()))
@@ -564,16 +600,15 @@ class _CowProfileScreenState extends State<CowProfileScreen> {
             ],
           ),
         );
-      }).toList(),
-    );
+    }).toList();
+    return _scrollableList(items);
   }
 
   // ─── nutrition records ─────────────────────────────────────────────────────
 
   Widget _buildNutrition(List nutrition) {
     if (nutrition.isEmpty) return _emptyState('No nutrition recommendations yet');
-    return Column(
-      children: nutrition.map<Widget>((n) {
+    final items = nutrition.map<Widget>((n) {
         final dm   = n['dry_matter_intake_kg']?.toString() ?? '—';
         final ca   = n['calcium_g_per_day']?.toString() ?? '—';
         final phos = n['phosphorus_g_per_day']?.toString() ?? '—';
@@ -608,8 +643,8 @@ class _CowProfileScreenState extends State<CowProfileScreen> {
             ],
           ),
         );
-      }).toList(),
-    );
+    }).toList();
+    return _scrollableList(items);
   }
 
   // ─── date formatter ────────────────────────────────────────────────────────
