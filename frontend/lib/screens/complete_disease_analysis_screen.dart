@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../services/api_service.dart';
-import '../api/identify_cow_api.dart';
 import '../api/prediction_api.dart';
 import '../api/cow_api.dart';
 
@@ -17,7 +16,6 @@ class _CompleteDiseaseAnalysisScreenState extends State<CompleteDiseaseAnalysisS
   File? _selectedImage;
   bool _isAnalyzing = false;
   Map<String, dynamic>? _analysisResult;
-  Map<String, dynamic>? _cowIdentityResult;
   final ImagePicker _picker = ImagePicker();
 
   // Clinical data inputs
@@ -245,7 +243,6 @@ class _CompleteDiseaseAnalysisScreenState extends State<CompleteDiseaseAnalysisS
         setState(() {
           _selectedImage = File(image.path);
           _analysisResult = null;
-          _cowIdentityResult = null;
         });
       }
     } catch (e) {
@@ -275,15 +272,6 @@ class _CompleteDiseaseAnalysisScreenState extends State<CompleteDiseaseAnalysisS
         temperature: _temperature,
         previousDisease: _selectedDiseases.isEmpty ? null : _selectedDiseases,
       );
-      
-      // Also identify the cow via Laravel API (separate URL)
-      Map<String, dynamic>? cowResult;
-      try {
-        cowResult = await IdentifyCowApi.identifyCow(_selectedImage!);
-      } catch (cowError) {
-        // Cow identification is optional - don't fail the whole analysis
-        debugPrint('Cow identification failed: $cowError');
-      }
       
       // Merge results: Use winning disease from comparison, but keep severity/treatment from full analysis
       final densenet = comparisonResult['densenet'] as Map<String, dynamic>?;
@@ -316,7 +304,6 @@ class _CompleteDiseaseAnalysisScreenState extends State<CompleteDiseaseAnalysisS
       
       setState(() {
         _analysisResult = combinedResult;
-        _cowIdentityResult = cowResult;
         _isAnalyzing = false;
       });
 
@@ -569,95 +556,10 @@ class _CompleteDiseaseAnalysisScreenState extends State<CompleteDiseaseAnalysisS
             // Analysis Results
             if (_analysisResult != null) ...[
               const SizedBox(height: 24),
-              // Cow Identity Card (from Laravel API)
-              if (_cowIdentityResult != null) _buildCowIdentityCard(),
               _buildAnalysisResults(cs),
             ],
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildCowIdentityCard() {
-    final cow = _cowIdentityResult?['cow'] as Map<String, dynamic>?;
-    final similarity = _cowIdentityResult?['similarity'] as num?;
-
-    if (cow == null) return const SizedBox.shrink();
-
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.teal[50],
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.teal[300]!, width: 2),
-      ),
-      padding: const EdgeInsets.all(16),
-      margin: const EdgeInsets.only(bottom: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.pets, color: Colors.teal[700], size: 28),
-              const SizedBox(width: 10),
-              Text(
-                'Cow Identified',
-                style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.teal[900],
-                  fontSize: 16,
-                ),
-              ),
-              const Spacer(),
-              if (similarity != null)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: Colors.teal[100],
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    '${(similarity.toDouble() * 100).toStringAsFixed(1)}% match',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Colors.teal[800],
-                      fontSize: 12,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildCowInfoRow('Cow ID', cow['cow_id']?.toString() ?? 'N/A'),
-          _buildCowInfoRow('Name', cow['name']?.toString() ?? 'N/A'),
-          _buildCowInfoRow('Breed', cow['breed']?.toString() ?? 'N/A'),
-          _buildCowInfoRow('Lactation Month', cow['lactation_month']?.toString() ?? 'N/A'),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildCowInfoRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          Text(
-            '$label: ',
-            style: TextStyle(
-              fontWeight: FontWeight.w600,
-              color: Colors.teal[800],
-              fontSize: 13,
-            ),
-          ),
-          Text(
-            value,
-            style: TextStyle(
-              color: Colors.teal[700],
-              fontSize: 13,
-            ),
-          ),
-        ],
       ),
     );
   }
