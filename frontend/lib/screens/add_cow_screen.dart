@@ -12,16 +12,67 @@ class AddCowScreen extends StatefulWidget {
   State<AddCowScreen> createState() => _AddCowScreenState();
 }
 
+/// Common cattle breeds – dairy, beef, and South Asian varieties.
+const List<String> _cattleBreeds = [
+  'Holstein / Holstein-Friesian',
+  'Jersey',
+  'Ayrshire',
+  'Brown Swiss',
+  'Guernsey',
+  'Milking Shorthorn',
+  'Friesian',
+  'Sahiwal',
+  'Tharparkar',
+  'Gir (Gyr)',
+  'Hariana',
+  'Red Sindhi',
+  'Ongole',
+  'Kankrej',
+  'Deoni',
+  'Angus',
+  'Hereford',
+  'Simmental',
+  'Limousin',
+  'Charolais',
+  'Brahman',
+  'Shorthorn',
+  'Belted Galloway',
+  'Highland',
+  'Dexter',
+  'Nelore',
+  'Zebu',
+  'Lanka White (Sinhala)',
+  'Other',
+];
+
 class _AddCowScreenState extends State<AddCowScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _cowIdCtrl = TextEditingController();
   final _nameCtrl = TextEditingController();
-  final _breedCtrl = TextEditingController();
   final _lmCtrl = TextEditingController();
+  final _weightCtrl = TextEditingController();
+
+  String? _selectedBreed;
+  DateTime? _selectedBirthdate;
   File? _imageFile;
   bool _saving = false;
+  String _generatedCowId = '…';
 
   final _picker = ImagePicker();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchNextId();
+  }
+
+  Future<void> _fetchNextId() async {
+    try {
+      final id = await CowApi.getNextCowId();
+      if (mounted) setState(() => _generatedCowId = id);
+    } catch (_) {
+      if (mounted) setState(() => _generatedCowId = 'COW-001');
+    }
+  }
 
   Future<void> _pickImage() async {
     final source = await showModalBottomSheet<ImageSource>(
@@ -45,9 +96,7 @@ class _AddCowScreenState extends State<AddCowScreen> {
     );
     if (source == null) return;
     final xfile = await _picker.pickImage(source: source, imageQuality: 75);
-    if (xfile != null) {
-      setState(() => _imageFile = File(xfile.path));
-    }
+    if (xfile != null) setState(() => _imageFile = File(xfile.path));
   }
 
   Future<void> _saveCow() async {
@@ -61,11 +110,18 @@ class _AddCowScreenState extends State<AddCowScreen> {
     setState(() => _saving = true);
     try {
       await CowApi.storeCow(
-        cowId: _cowIdCtrl.text.trim(),
         name: _nameCtrl.text.trim(),
         imageFile: _imageFile!,
-        breed: _breedCtrl.text.trim(),
-        lactationMonth: int.parse(_lmCtrl.text.trim()),
+        breed: _selectedBreed,
+        birthdate: _selectedBirthdate != null
+            ? _selectedBirthdate!.toIso8601String().substring(0, 10)
+            : null,
+        lactationMonth: _lmCtrl.text.trim().isEmpty
+            ? null
+            : int.tryParse(_lmCtrl.text.trim()),
+        weight: _weightCtrl.text.trim().isEmpty
+            ? null
+            : double.tryParse(_weightCtrl.text.trim()),
       );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -76,18 +132,24 @@ class _AddCowScreenState extends State<AddCowScreen> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
     } finally {
-      setState(() => _saving = false);
+      if (mounted) setState(() => _saving = false);
     }
   }
 
   @override
   void dispose() {
-    _cowIdCtrl.dispose();
     _nameCtrl.dispose();
-    _breedCtrl.dispose();
     _lmCtrl.dispose();
+    _weightCtrl.dispose();
     super.dispose();
   }
+
+  InputDecoration _fieldDecor(String label, IconData icon) => InputDecoration(
+        labelText: label,
+        labelStyle: const TextStyle(color: Colors.white),
+        prefixIcon: Icon(icon, color: Colors.white),
+        fillColor: Colors.white.withOpacity(0.12),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -125,6 +187,7 @@ class _AddCowScreenState extends State<AddCowScreen> {
                         key: _formKey,
                         child: Column(
                           children: [
+                            // ── Photo picker ────────────────────────────────
                             GestureDetector(
                               onTap: _pickImage,
                               child: Container(
@@ -134,7 +197,9 @@ class _AddCowScreenState extends State<AddCowScreen> {
                                   color: cs.primaryContainer,
                                   borderRadius: BorderRadius.circular(18),
                                   image: _imageFile != null
-                                      ? DecorationImage(image: FileImage(_imageFile!), fit: BoxFit.cover)
+                                      ? DecorationImage(
+                                          image: FileImage(_imageFile!),
+                                          fit: BoxFit.cover)
                                       : null,
                                   boxShadow: [
                                     BoxShadow(
@@ -146,79 +211,242 @@ class _AddCowScreenState extends State<AddCowScreen> {
                                 ),
                                 child: _imageFile == null
                                     ? Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.add_a_photo, color: cs.onPrimaryContainer),
-                                    const SizedBox(height: 8),
-                                    Text('Add image',
-                                        style: TextStyle(color: cs.onPrimaryContainer)),
-                                  ],
-                                )
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.add_a_photo,
+                                              color: cs.onPrimaryContainer),
+                                          const SizedBox(height: 8),
+                                          Text('Add image',
+                                              style: TextStyle(
+                                                  color: cs.onPrimaryContainer)),
+                                        ],
+                                      )
                                     : null,
                               ),
                             ),
                             const SizedBox(height: 16),
-                            TextFormField(
-                              controller: _cowIdCtrl,
-                              style: const TextStyle(color: Colors.white),
-                              decoration: InputDecoration(
-                                labelText: 'Cow ID',
-                                labelStyle: const TextStyle(color: Colors.white),
-                                prefixIcon: const Icon(Icons.qr_code_2, color: Colors.white),
-                                fillColor: Colors.white.withOpacity(0.12),
+
+                            // ── Auto-generated Cow ID (read-only) ────────────
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 16, vertical: 14),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.10),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                    color: Colors.white.withOpacity(0.3)),
                               ),
-                              validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.qr_code_2,
+                                      color: Colors.white70, size: 20),
+                                  const SizedBox(width: 10),
+                                  Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      const Text('Cow ID (auto-generated)',
+                                          style: TextStyle(
+                                              color: Colors.white60,
+                                              fontSize: 12)),
+                                      Text(
+                                        _generatedCowId,
+                                        style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 16,
+                                            letterSpacing: 1.2),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
                             ),
                             const SizedBox(height: 12),
+
+                            // ── Name ─────────────────────────────────────────
                             TextFormField(
                               controller: _nameCtrl,
                               style: const TextStyle(color: Colors.white),
-                              decoration: InputDecoration(
-                                labelText: 'Cow Name',
-                                labelStyle: const TextStyle(color: Colors.white),
-                                prefixIcon: const Icon(Icons.pets, color: Colors.white),
-                                fillColor: Colors.white.withOpacity(0.12),
-                              ),
-                              validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                              decoration:
+                                  _fieldDecor('Cow Name', Icons.pets),
+                              validator: (v) =>
+                                  (v == null || v.trim().isEmpty)
+                                      ? 'Required'
+                                      : null,
                             ),
                             const SizedBox(height: 12),
-                            TextFormField(
-                              controller: _breedCtrl,
+
+                            // ── Breed dropdown ───────────────────────────────
+                            DropdownButtonFormField<String>(
+                              value: _selectedBreed,
                               style: const TextStyle(color: Colors.white),
-                              decoration: InputDecoration(
-                                labelText: 'Cow Breed',
-                                labelStyle: const TextStyle(color: Colors.white),
-                                prefixIcon: const Icon(Icons.grass, color: Colors.white),
-                                fillColor: Colors.white.withOpacity(0.12),
-                              ),
-                              validator: (v) => (v == null || v.trim().isEmpty) ? 'Required' : null,
+                              dropdownColor: const Color(0xFF2E5E3E),
+                              decoration:
+                                  _fieldDecor('Cow Breed', Icons.grass),
+                              hint: const Text('Select breed',
+                                  style:
+                                      TextStyle(color: Colors.white60)),
+                              items: _cattleBreeds
+                                  .map((b) => DropdownMenuItem(
+                                        value: b,
+                                        child: Text(b,
+                                            style: const TextStyle(
+                                                color: Colors.white)),
+                                      ))
+                                  .toList(),
+                              onChanged: (v) =>
+                                  setState(() => _selectedBreed = v),
+                              validator: (v) =>
+                                  v == null ? 'Please select a breed' : null,
                             ),
                             const SizedBox(height: 12),
-                            TextFormField(
-                              controller: _lmCtrl,
-                              style: const TextStyle(color: Colors.white),
-                              decoration: InputDecoration(
-                                labelText: 'Lactation Month',
-                                labelStyle: const TextStyle(color: Colors.white),
-                                prefixIcon: const Icon(Icons.calendar_month, color: Colors.white),
-                                fillColor: Colors.white.withOpacity(0.12),
+
+                            // ── Birthdate ────────────────────────────────────
+                            GestureDetector(
+                              onTap: () async {
+                                final picked = await showDatePicker(
+                                  context: context,
+                                  initialDate: _selectedBirthdate ?? DateTime.now(),
+                                  firstDate: DateTime(2000),
+                                  lastDate: DateTime.now(),
+                                  builder: (ctx, child) => Theme(
+                                    data: Theme.of(ctx).copyWith(
+                                      colorScheme: Theme.of(ctx)
+                                          .colorScheme
+                                          .copyWith(primary: Colors.green.shade700),
+                                    ),
+                                    child: child!,
+                                  ),
+                                );
+                                if (picked != null) {
+                                  setState(() => _selectedBirthdate = picked);
+                                }
+                              },
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 16, vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.10),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                      color: Colors.white.withOpacity(0.3)),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.cake,
+                                        color: Colors.white70, size: 20),
+                                    const SizedBox(width: 10),
+                                    Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        const Text('Date of Birth (optional)',
+                                            style: TextStyle(
+                                                color: Colors.white60,
+                                                fontSize: 12)),
+                                        Text(
+                                          _selectedBirthdate != null
+                                              ? '${_selectedBirthdate!.year}-'
+                                                '${_selectedBirthdate!.month.toString().padLeft(2, '0')}-'
+                                                '${_selectedBirthdate!.day.toString().padLeft(2, '0')}'
+                                              : 'Tap to select',
+                                          style: TextStyle(
+                                              color: _selectedBirthdate != null
+                                                  ? Colors.white
+                                                  : Colors.white54,
+                                              fontWeight: _selectedBirthdate != null
+                                                  ? FontWeight.w600
+                                                  : FontWeight.normal,
+                                              fontSize: 14),
+                                        ),
+                                      ],
+                                    ),
+                                    const Spacer(),
+                                    if (_selectedBirthdate != null)
+                                      GestureDetector(
+                                        onTap: () => setState(
+                                            () => _selectedBirthdate = null),
+                                        child: const Icon(Icons.clear,
+                                            color: Colors.white54, size: 18),
+                                      ),
+                                  ],
+                                ),
                               ),
-                              keyboardType: TextInputType.number,
+                            ),
+                            const SizedBox(height: 12),
+
+                            // ── Weight ───────────────────────────────────────
+                            TextFormField(
+                              controller: _weightCtrl,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: _fieldDecor(
+                                  'Weight (kg)', Icons.monitor_weight),
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                      decimal: true),
                               validator: (v) {
-                                if (v == null || v.trim().isEmpty) return 'Required';
-                                final n = int.tryParse(v);
-                                if (n == null || n < 0) return 'Enter a valid number';
+                                if (v == null || v.trim().isEmpty)
+                                  return null; // optional
+                                final n = double.tryParse(v);
+                                if (n == null || n < 0)
+                                  return 'Enter a valid weight';
                                 return null;
                               },
                             ),
+                            const SizedBox(height: 12),
+
+                            // ── Lactation Month ──────────────────────────────
+                            TextFormField(
+                              controller: _lmCtrl,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: _fieldDecor(
+                                  'Lactation Month', Icons.calendar_month),
+                              keyboardType: TextInputType.number,
+                              validator: (v) {
+                                if (v == null || v.trim().isEmpty)
+                                  return null; // optional
+                                final n = int.tryParse(v);
+                                if (n == null || n < 0)
+                                  return 'Enter a valid number';
+                                return null;
+                              },
+                            ),
+                            // ── Lactation month hint ─────────────────────────
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                  top: 4, left: 4, bottom: 4),
+                              child: Row(
+                                children: const [
+                                  Icon(Icons.info_outline,
+                                      color: Colors.white54, size: 13),
+                                  SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      'Lactation month = how many months since this cow last gave birth and started producing milk (0 = not currently lactating).',
+                                      style: TextStyle(
+                                          color: Colors.white54,
+                                          fontSize: 11),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
                             const SizedBox(height: 16),
+
+                            // ── Save button ──────────────────────────────────
                             SizedBox(
                               width: double.infinity,
                               child: ElevatedButton.icon(
                                 onPressed: _saving ? null : _saveCow,
                                 icon: _saving
                                     ? const SizedBox(
-                                    height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                                        height: 20,
+                                        width: 20,
+                                        child: CircularProgressIndicator(
+                                            strokeWidth: 2))
                                     : const Icon(Icons.save),
                                 label: const Text('Save'),
                               ),
@@ -237,3 +465,4 @@ class _AddCowScreenState extends State<AddCowScreen> {
     );
   }
 }
+

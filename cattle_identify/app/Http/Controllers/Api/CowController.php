@@ -20,13 +20,28 @@ class CowController extends Controller
     }
 
     /**
+     * GET /api/cows/next-id
+     * Returns the next auto-generated cow ID (e.g. COW-001, COW-002, …)
+     */
+    public function nextCowId()
+    {
+        $maxNum = 0;
+        Cow::select('cow_id')->get()->each(function ($c) use (&$maxNum) {
+            if (preg_match('/^COW-(\d+)$/i', $c->cow_id, $m)) {
+                $maxNum = max($maxNum, (int) $m[1]);
+            }
+        });
+        $nextId = 'COW-' . str_pad($maxNum + 1, 3, '0', STR_PAD_LEFT);
+        return response()->json(['next_cow_id' => $nextId]);
+    }
+
+    /**
      * POST /api/cows
      * Cow registration
      */
     public function store(Request $request)
     {
         $data = $request->validate([
-            'cow_id'           => 'required|string|max:255|unique:cows,cow_id',
             'name'             => 'required|string|max:255',
             'birthdate'        => 'nullable|date',
             'breed'            => 'nullable|string|max:255',
@@ -35,6 +50,15 @@ class CowController extends Controller
             'previous_disease' => 'nullable',
             'image'            => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
         ]);
+
+        // Auto-generate unique cow_id
+        $maxNum = 0;
+        Cow::select('cow_id')->get()->each(function ($c) use (&$maxNum) {
+            if (preg_match('/^COW-(\d+)$/i', $c->cow_id, $m)) {
+                $maxNum = max($maxNum, (int) $m[1]);
+            }
+        });
+        $cowId = 'COW-' . str_pad($maxNum + 1, 3, '0', STR_PAD_LEFT);
 
         // Get the uploaded file ONCE
         $uploadedFile = $request->file('image'); // instance of UploadedFile
@@ -89,7 +113,7 @@ class CowController extends Controller
 
         // 3) Save cow with embedding stored as JSON string
         $cow = Cow::create([
-            'cow_id'           => $data['cow_id'],
+            'cow_id'           => $cowId,
             'name'             => $data['name'],
             'birthdate'        => $data['birthdate'] ?? null,
             'breed'            => $data['breed'] ?? null,
