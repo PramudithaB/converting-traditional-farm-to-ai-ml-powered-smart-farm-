@@ -33,7 +33,7 @@ class _FeedScreenState extends State<FeedScreen> {
   double _milkYield = 25.0; // L/day
   String _activity = 'Medium';
 
-  final List<String> _activityLevels = ['Low', 'Medium', 'High'];
+  final List<String> _activityLevels = ['Medium', 'High'];
 
   @override
   void initState() {
@@ -72,6 +72,13 @@ class _FeedScreenState extends State<FeedScreen> {
 
     // Set breed from cow record
     _breed = (_selectedCow!['breed'] as String?) ?? _breed;
+
+    // Auto-fill weight from cow record
+    final w = _selectedCow!['weight'];
+    if (w != null) {
+      final wVal = w is num ? w.toDouble() : double.tryParse(w.toString());
+      if (wVal != null) _weight = wVal.clamp(300.0, 1000.0);
+    }
 
     // Derive age in months from birthdate if present
     final birthdateStr = _selectedCow!['birthdate'];
@@ -575,7 +582,7 @@ class _FeedScreenState extends State<FeedScreen> {
                 ),
                 Slider(
                   value: _weight,
-                  min: 300,
+                  min: 5,
                   max: 1000,
                   divisions: 70,
                   label: '${_weight.toStringAsFixed(0)}kg',
