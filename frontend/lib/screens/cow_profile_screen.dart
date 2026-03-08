@@ -390,9 +390,10 @@ class _CowProfileScreenState extends State<CowProfileScreen> {
   // ─── behavior detections ───────────────────────────────────────────────────
 
   Widget _buildBehaviorDetections(List detections) {
-    if (detections.isEmpty) return _emptyState('No behavior detections yet');
+    final filtered = detections.where((d) => d['behavior'] != null && d['behavior'].toString().isNotEmpty).toList();
+    if (filtered.isEmpty) return _emptyState('No behavior detections yet');
     return Column(
-      children: detections.map<Widget>((d) {
+      children: filtered.map<Widget>((d) {
         final behavior = d['behavior']?.toString() ?? 'Unknown';
         final conf = ((d['confidence'] as num?)?.toDouble() ?? 0) * 100;
         final type = d['detection_type']?.toString() ?? '';
