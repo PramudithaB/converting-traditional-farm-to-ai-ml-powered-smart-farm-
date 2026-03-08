@@ -29,17 +29,24 @@ class _NutritionScreenState extends State<NutritionScreen> {
   String _healthStatus = 'Healthy';
   String _disease = 'None';
   double _bodyConditionScore = 3.0;
-  String _location = 'Farm';
-  double _energyMJ = 120.0;
+  String _location = 'Dry Zone';
+  double _energyMJ = 100.0;
   double _crudeProtein = 1500.0;
   String _feedType = 'Mixed';
 
-  final List<String> _breeds = ['Holstein', 'Jersey', 'Brown Swiss', 'Guernsey', 'Ayrshire'];
+  List<String> _breeds = [
+    'Holstein / Holstein-Friesian', 'Holstein', 'Jersey', 'Ayrshire', 'Brown Swiss',
+    'Guernsey', 'Milking Shorthorn', 'Friesian', 'Sahiwal', 'Tharparkar',
+    'Gir (Gyr)', 'Hariana', 'Red Sindhi', 'Ongole', 'Kankrej', 'Deoni',
+    'Angus', 'Hereford', 'Simmental', 'Limousin', 'Charolais', 'Brahman',
+    'Shorthorn', 'Belted Galloway', 'Highland', 'Dexter', 'Nelore', 'Zebu',
+    'Lanka White (Sinhala)', 'Other',
+  ];
   final List<String> _activityLevels = ['Low', 'Medium', 'High'];
   final List<String> _healthStatuses = ['Healthy', 'Disease', 'Recovering'];
   final List<String> _diseases = ['None', 'Mastitis', 'Lameness', 'Metabolic', 'Respiratory'];
-  final List<String> _locations = ['Farm', 'Pasture', 'Barn', 'Open'];
-  final List<String> _feedTypes = ['Mixed', 'Hay', 'Silage', 'Concentrate', 'Pasture'];
+  final List<String> _locations = ['Dry Zone', 'Wet Zone'];
+  final List<String> _feedTypes = ['Mixed', 'Grass clippings', 'Milk'];
 
   @override
   void initState() {
@@ -68,7 +75,10 @@ class _NutritionScreenState extends State<NutritionScreen> {
 
     // ── Prefill from cow fields ──
     final breed = cow['breed'] as String?;
-    if (breed != null && _breeds.contains(breed)) {
+    if (breed != null && breed.isNotEmpty) {
+      if (!_breeds.contains(breed)) {
+        setState(() => _breeds = [..._breeds, breed]);
+      }
       setState(() => _breed = breed);
     }
 
@@ -86,15 +96,12 @@ class _NutritionScreenState extends State<NutritionScreen> {
       }
     }
 
+    // Health Status from previous_disease (disease field fixed to 'None')
     final prevDisease = cow['previous_disease'];
     if (prevDisease is List && prevDisease.isNotEmpty) {
-      final last = prevDisease.last.toString();
-      setState(() {
-        _disease = _diseases.contains(last) ? last : 'None';
-        _healthStatus = 'Disease';
-      });
+      setState(() => _healthStatus = 'Disease');
     } else {
-      setState(() { _disease = 'None'; _healthStatus = 'Healthy'; });
+      setState(() => _healthStatus = 'Healthy');
     }
 
     // ── Overlay with latest saved nutrition input_data ──
@@ -106,7 +113,10 @@ class _NutritionScreenState extends State<NutritionScreen> {
         if (input != null && mounted) {
           setState(() {
             final b = input['Breed'] as String?;
-            if (b != null && _breeds.contains(b)) _breed = b;
+            if (b != null && b.isNotEmpty) {
+              if (!_breeds.contains(b)) _breeds = [..._breeds, b];
+              _breed = b;
+            }
 
             final w = (input['Weight_kg'] as num?)?.toDouble();
             if (w != null) _weightKg = w.clamp(200.0, 800.0);
@@ -117,8 +127,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
             final hs = input['Health_Status'] as String?;
             if (hs != null && _healthStatuses.contains(hs)) _healthStatus = hs;
 
-            final d = input['Disease'] as String?;
-            if (d != null && _diseases.contains(d)) _disease = d;
+            // Disease is fixed to 'None' — skip overlay
 
             final m = (input['Milk_Yield_L_per_day'] as num?)?.toDouble();
             if (m != null) _milkYield = m.clamp(0.0, 50.0);
@@ -133,7 +142,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
             if (loc != null && _locations.contains(loc)) _location = loc;
 
             final e = (input['Energy_MJ_per_day'] as num?)?.toDouble();
-            if (e != null) _energyMJ = e.clamp(50.0, 200.0);
+            // Energy has fixed default of 100 — skip overlay
 
             final cp = (input['Crude_Protein_g_per_day'] as num?)?.toDouble();
             if (cp != null) _crudeProtein = cp.clamp(500.0, 3000.0);
@@ -404,20 +413,6 @@ class _NutritionScreenState extends State<NutritionScreen> {
               ),
               const SizedBox(height: 16),
 
-              // ── Disease ──
-              Text('Disease', style: Theme.of(context).textTheme.titleMedium),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: _disease,
-                decoration: InputDecoration(
-                  filled: true, fillColor: cs.surfaceContainerHighest,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                ),
-                items: _diseases.map((d) => DropdownMenuItem(value: d, child: Text(d))).toList(),
-                onChanged: (v) => setState(() => _disease = v!),
-              ),
-              const SizedBox(height: 16),
-
               // ── Body Condition Score ──
               Text('Body Condition Score: ${_bodyConditionScore.toStringAsFixed(1)}', style: Theme.of(context).textTheme.titleMedium),
               Slider(
@@ -439,16 +434,6 @@ class _NutritionScreenState extends State<NutritionScreen> {
                 ),
                 items: _locations.map((l) => DropdownMenuItem(value: l, child: Text(l))).toList(),
                 onChanged: (v) => setState(() => _location = v!),
-              ),
-              const SizedBox(height: 16),
-
-              // ── Energy ──
-              Text('Energy: ${_energyMJ.toStringAsFixed(0)} MJ/day', style: Theme.of(context).textTheme.titleMedium),
-              Slider(
-                value: _energyMJ,
-                min: 50, max: 200, divisions: 150,
-                label: '${_energyMJ.toStringAsFixed(0)} MJ',
-                onChanged: (v) => setState(() => _energyMJ = v),
               ),
               const SizedBox(height: 16),
 
