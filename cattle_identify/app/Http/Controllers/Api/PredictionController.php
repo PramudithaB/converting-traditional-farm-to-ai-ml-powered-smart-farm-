@@ -39,6 +39,7 @@ class PredictionController extends Controller
     {
         return response()->json(
             AnimalBirthPrediction::where('user_id', $request->user()?->id)
+                ->with(['cow:id,cow_id,name'])
                 ->orderByDesc('created_at')->get()
         );
     }
