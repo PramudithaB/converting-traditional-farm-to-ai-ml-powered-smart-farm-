@@ -134,7 +134,8 @@ class _CompleteDiseaseAnalysisScreenState extends State<CompleteDiseaseAnalysisS
     // Weight — MySQL DECIMAL arrives as a string from PHP/PDO JSON, so parse safely
     final w = cow['weight'];
     if (w != null) {
-      _weight = double.tryParse(w.toString()) ?? _weight;
+      final parsed = double.tryParse(w.toString());
+      if (parsed != null) _weight = parsed.clamp(200.0, 800.0);
     }
 
     // Age in months from birthdate

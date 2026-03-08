@@ -791,11 +791,6 @@ class _CowProfileScreenState extends State<CowProfileScreen> {
                       _sectionTitle('Basic Information', Icons.info_outline, cs.primary),
                       _buildBasicInfo(cowData),
 
-                      // ── Previous Diseases ──────────────────────────────
-                      _sectionTitle('Previous Diseases', Icons.history,
-                          Colors.orange.shade700),
-                      _buildPreviousDiseases(cowData),
-
                       // ── Recent Disease Detections ──────────────────────
                       _sectionTitle('Disease Detection History',
                           Icons.medical_services, Colors.red.shade600),

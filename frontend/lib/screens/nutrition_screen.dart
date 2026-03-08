@@ -23,7 +23,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
   // ── Input fields ──
   int _ageMonths = 36;
   double _weightKg = 450.0;
-  String _breed = 'Holstein';
+  String _breed = 'Friesian';
   double _milkYield = 25.0;
   String _activityLevel = 'Medium';
   String _healthStatus = 'Healthy';

@@ -175,7 +175,7 @@ class _VideoAnalysisScreenState extends State<VideoAnalysisScreen> {
           String? topBehavior;
           int topCount = 0;
           behaviors.forEach((k, v) {
-            final count = (v as num).toInt();
+            final count = v is num ? v.toInt() : ((v as Map<String, dynamic>)['count'] as num?)?.toInt() ?? 0;
             if (count > topCount) { topCount = count; topBehavior = k; }
           });
           PredictionApi.saveBehaviorDetection(
@@ -196,7 +196,7 @@ class _VideoAnalysisScreenState extends State<VideoAnalysisScreen> {
           String? topDisease;
           int topCount = 0;
           diseases.forEach((k, v) {
-            final count = (v as num).toInt();
+            final count = v is num ? v.toInt() : ((v as Map<String, dynamic>)['count'] as num?)?.toInt() ?? 0;
             if (count > topCount) { topCount = count; topDisease = k; }
           });
           if (topDisease != null) {
