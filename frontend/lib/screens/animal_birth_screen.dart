@@ -334,13 +334,13 @@ class _AnimalBirthScreenState extends State<AnimalBirthScreen> {
                         ),
                         const Divider(height: 24),
                         _buildResultItem(
-                          'Will Birth in 2 Days',
+                          'Will Birth in 1 Day',
                           _result!['will_birth_in_next_2_days'] ?? 'N/A',
                           cs,
                         ),
                         const SizedBox(height: 12),
                         _buildResultItem(
-                          'Estimated Days to Birth',
+                          'Estimated Hours to Birth',
                           _result!['estimated_days_to_birth']?.toString() ?? 'N/A',
                           cs,
                         ),

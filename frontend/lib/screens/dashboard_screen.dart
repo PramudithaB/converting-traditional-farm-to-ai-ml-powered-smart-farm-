@@ -293,13 +293,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ],
             ),
           ),
-          if (!isDisease)
+          if (isDisease)
             Chip(
               label: Text(
-                'Behavior',
-                style: const TextStyle(fontSize: 10),
+                isHealthy ? 'Healthy' : 'Unhealthy',
+                style: const TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600),
               ),
-              backgroundColor: color.withOpacity(0.12),
+              backgroundColor: isHealthy ? Colors.green.shade500 : Colors.red.shade500,
+              padding: EdgeInsets.zero,
+              visualDensity: VisualDensity.compact,
+            )
+          else
+            Chip(
+              label: const Text(
+                'Behavior',
+                style: TextStyle(fontSize: 10, color: Colors.white, fontWeight: FontWeight.w600),
+              ),
+              backgroundColor: Colors.teal.shade500,
               padding: EdgeInsets.zero,
               visualDensity: VisualDensity.compact,
             ),
