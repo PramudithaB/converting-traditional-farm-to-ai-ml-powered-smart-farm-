@@ -304,6 +304,24 @@ class _CowProfileScreenState extends State<CowProfileScreen> {
     );
   }
 
+  Color _diseaseColor(String disease) {
+    switch (disease.toLowerCase()) {
+      case 'mastitis':        return Colors.red.shade700;
+      case 'lameness':        return Colors.orange.shade700;
+      case 'metabolic':       return Colors.purple.shade600;
+      case 'respiratory':     return Colors.blue.shade600;
+      case 'none':            return Colors.green.shade600;
+      case 'healthy':         return Colors.green.shade600;
+      case 'fmd':             return Colors.red.shade900;
+      case 'lumpy skin':      return Colors.amber.shade700;
+      case 'ringworm':        return Colors.brown.shade600;
+      case 'dermatophilosis': return Colors.teal.shade700;
+      case 'contagious':      return Colors.deepOrange.shade600;
+      case 'pediculosis':     return Colors.lime.shade700;
+      default:                return Colors.pink.shade600;
+    }
+  }
+
   // ─── previous diseases ─────────────────────────────────────────────────────
 
   Widget _buildPreviousDiseases(Map<String, dynamic> cow) {
@@ -315,13 +333,17 @@ class _CowProfileScreenState extends State<CowProfileScreen> {
         : Wrap(
             spacing: 8,
             runSpacing: 6,
-            children: diseases.map((d) => Chip(
-              avatar: const Icon(Icons.warning_amber_rounded, size: 14),
-              label: Text(d, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500)),
-              backgroundColor: Colors.orange.shade50,
-              side: BorderSide(color: Colors.orange.shade300),
-              visualDensity: VisualDensity.compact,
-            )).toList(),
+            children: diseases.map((d) {
+              final c = _diseaseColor(d);
+              return Chip(
+                avatar: Icon(Icons.warning_amber_rounded, size: 14, color: c),
+                label: Text(d,
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: c)),
+                backgroundColor: c.withOpacity(0.1),
+                side: BorderSide(color: c.withOpacity(0.5)),
+                visualDensity: VisualDensity.compact,
+              );
+            }).toList(),
           );
   }
 
