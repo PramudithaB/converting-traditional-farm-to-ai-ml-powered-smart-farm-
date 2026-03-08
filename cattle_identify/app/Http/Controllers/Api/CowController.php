@@ -14,19 +14,21 @@ class CowController extends Controller
     /**
      * GET /api/cows
      */
-    public function index()
+    public function index(Request $request)
     {
-        return response()->json(Cow::all());
+        return response()->json(
+            Cow::where('user_id', $request->user()->id)->get()
+        );
     }
 
     /**
      * GET /api/cows/next-id
      * Returns the next auto-generated cow ID (e.g. COW-001, COW-002, …)
      */
-    public function nextCowId()
+    public function nextCowId(Request $request)
     {
         $maxNum = 0;
-        Cow::select('cow_id')->get()->each(function ($c) use (&$maxNum) {
+        Cow::select('cow_id')->where('user_id', $request->user()->id)->get()->each(function ($c) use (&$maxNum) {
             if (preg_match('/^COW-(\d+)$/i', $c->cow_id, $m)) {
                 $maxNum = max($maxNum, (int) $m[1]);
             }
@@ -51,9 +53,9 @@ class CowController extends Controller
             'image'            => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:5120',
         ]);
 
-        // Auto-generate unique cow_id
+        // Auto-generate unique cow_id (scoped per user)
         $maxNum = 0;
-        Cow::select('cow_id')->get()->each(function ($c) use (&$maxNum) {
+        Cow::select('cow_id')->where('user_id', $request->user()->id)->get()->each(function ($c) use (&$maxNum) {
             if (preg_match('/^COW-(\d+)$/i', $c->cow_id, $m)) {
                 $maxNum = max($maxNum, (int) $m[1]);
             }
@@ -113,6 +115,7 @@ class CowController extends Controller
 
         // 3) Save cow with embedding stored as JSON string
         $cow = Cow::create([
+            'user_id'          => $request->user()->id,
             'cow_id'           => $cowId,
             'name'             => $data['name'],
             'birthdate'        => $data['birthdate'] ?? null,
@@ -134,8 +137,10 @@ class CowController extends Controller
      * GET /api/cows/{cow}/profile
      * Full cow profile: cow data + related records aggregated.
      */
-    public function profile(Cow $cow)
+    public function profile(Request $request, Cow $cow)
     {
+        abort_if($cow->user_id !== $request->user()->id, 403, 'Forbidden');
+
         $cow->loadMissing([
             'diseaseDetections'       => fn($q) => $q->latest()->limit(10),
             'behaviorDetections'      => fn($q) => $q->latest()->limit(10),
@@ -174,8 +179,9 @@ class CowController extends Controller
     /**
      * GET /api/cows/{cow}
      */
-    public function show(Cow $cow)
+    public function show(Request $request, Cow $cow)
     {
+        abort_if($cow->user_id !== $request->user()->id, 403, 'Forbidden');
         return response()->json($cow);
     }
 
@@ -184,6 +190,8 @@ class CowController extends Controller
      */
     public function update(Request $request, Cow $cow)
     {
+        abort_if($cow->user_id !== $request->user()->id, 403, 'Forbidden');
+
         $data = $request->validate([
             'cow_id'           => 'sometimes|string|max:255|unique:cows,cow_id,' . $cow->id,
             'name'             => 'sometimes|string|max:255',
@@ -232,8 +240,9 @@ class CowController extends Controller
     /**
      * DELETE /api/cows/{cow}
      */
-    public function destroy(Cow $cow)
+    public function destroy(Request $request, Cow $cow)
     {
+        abort_if($cow->user_id !== $request->user()->id, 403, 'Forbidden');
         $cow->delete();
 
         return response()->json([
@@ -288,8 +297,8 @@ class CowController extends Controller
             ], 502);
         }
 
-        // 2) Compare with all stored cows
-        $cows = Cow::all();
+        // 2) Compare with stored cows belonging to this user
+        $cows = Cow::where('user_id', $request->user()->id)->get();
 
         if ($cows->isEmpty()) {
             return response()->json([
@@ -332,10 +341,11 @@ class CowController extends Controller
         ]);
     }
 
-    public function indexWithoutEmbedding()
+    public function indexWithoutEmbedding(Request $request)
     {
-        // Option 1: hide embedding using makeHidden
-        $cows = Cow::all()->makeHidden(['embedding']);
+        $cows = Cow::where('user_id', $request->user()->id)
+                   ->get()
+                   ->makeHidden(['embedding']);
 
         return response()->json($cows);
     }
@@ -370,8 +380,10 @@ class CowController extends Controller
      * Returns the most recent NutritionRecommendation for the given cow,
      * including its input_data so the app can pre-fill the form.
      */
-    public function latestNutrition(Cow $cow)
+    public function latestNutrition(Request $request, Cow $cow)
     {
+        abort_if($cow->user_id !== $request->user()->id, 403, 'Forbidden');
+
         $latest = $cow->nutritionRecommendations()->latest()->first();
         return response()->json($latest); // null → returns JSON null (200)
     }

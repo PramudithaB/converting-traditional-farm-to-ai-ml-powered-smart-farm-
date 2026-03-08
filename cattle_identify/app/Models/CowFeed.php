@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class CowFeed extends Model
 {
     protected $fillable = [
+        'user_id',
         'cow_id',
         'cow_weight_kg',
         'milk_yield_l',
@@ -18,5 +19,10 @@ class CowFeed extends Model
     public function cow()
     {
         return $this->belongsTo(Cow::class);
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(\App\Models\User::class);
     }
 }

@@ -100,6 +100,7 @@ class CowFeedController extends Controller
         $feedDate = $data['date'] ?? Carbon::today()->toDateString();
     
         $cowFeed = CowFeed::create([
+            'user_id'       => $request->user()->id,
             'cow_id'        => $cow->id,
             'cow_weight_kg' => $cowWeightKg,
             'milk_yield_l'  => $data['milk_yield'],
@@ -183,6 +184,7 @@ class CowFeedController extends Controller
         $feedDate = $data['date'] ?? Carbon::today()->toDateString();
 
         $cowFeed = CowFeed::create([
+            'user_id'       => $request->user()->id,
             'cow_id'        => $cow->id,
             'cow_weight_kg' => $data['weight'],
             'milk_yield_l'  => $data['milk_yield'],
@@ -202,8 +204,9 @@ class CowFeedController extends Controller
      * GET /api/cows/{cow}/feed
      * List feed records for a cow
      */
-    public function index(Cow $cow)
+    public function index(Request $request, Cow $cow)
     {
+        abort_if($cow->user_id !== $request->user()->id, 403, 'Forbidden');
         $feeds = $cow->feeds()->orderByDesc('date')->get();
 
         return response()->json($feeds);

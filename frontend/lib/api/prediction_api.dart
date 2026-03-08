@@ -11,10 +11,13 @@ class PredictionApi {
   static Future<Map<String, String>> _headers() async {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('authToken');
+    if (token == null) {
+      throw Exception('Not authenticated. Please login again.');
+    }
     return {
       'Content-Type': 'application/json',
       'Accept': 'application/json',
-      if (token != null) 'Authorization': 'Bearer $token',
+      'Authorization': 'Bearer $token',
     };
   }
 
