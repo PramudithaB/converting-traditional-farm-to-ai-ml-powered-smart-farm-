@@ -42,7 +42,7 @@ class _NutritionScreenState extends State<NutritionScreen> {
     'Shorthorn', 'Belted Galloway', 'Highland', 'Dexter', 'Nelore', 'Zebu',
     'Lanka White (Sinhala)', 'Other',
   ];
-  final List<String> _activityLevels = ['Low', 'Medium', 'High'];
+  final List<String> _activityLevels = ['Medium', 'High'];
   final List<String> _healthStatuses = ['Healthy', 'Disease', 'Recovering'];
   final List<String> _diseases = ['None', 'Mastitis', 'Lameness', 'Metabolic', 'Respiratory'];
   final List<String> _locations = ['Dry Zone', 'Wet Zone'];
@@ -71,38 +71,42 @@ class _NutritionScreenState extends State<NutritionScreen> {
   /// Prefills fields from cow DB data, then overlays saved inputs from the
   /// latest nutrition recommendation (if any).
   Future<void> _onCowSelected(Map<String, dynamic> cow) async {
-    setState(() => _selectedCow = cow);
+    // ── Prefill from cow DB fields (all in one setState to avoid partial rebuilds) ──
+    setState(() {
+      _selectedCow = cow;
 
-    // ── Prefill from cow fields ──
-    final breed = cow['breed'] as String?;
-    if (breed != null && breed.isNotEmpty) {
-      if (!_breeds.contains(breed)) {
-        setState(() => _breeds = [..._breeds, breed]);
+      // Breed — VARCHAR, always a string
+      final breed = cow['breed'] as String?;
+      if (breed != null && breed.isNotEmpty) {
+        if (!_breeds.contains(breed)) _breeds = [..._breeds, breed];
+        _breed = breed;
       }
-      setState(() => _breed = breed);
-    }
 
-    final weight = (cow['weight'] as num?)?.toDouble();
-    if (weight != null) {
-      setState(() => _weightKg = weight.clamp(200.0, 800.0));
-    }
-
-    final birthdate = cow['birthdate'] as String?;
-    if (birthdate != null) {
-      final birth = DateTime.tryParse(birthdate);
-      if (birth != null) {
-        final months = _monthsBetween(birth, DateTime.now());
-        setState(() => _ageMonths = months.clamp(12, 120));
+      // Weight — DECIMAL from MySQL may come back as a string ("450.00") or num
+      final rawW = cow['weight'];
+      if (rawW != null) {
+        final wVal = rawW is num
+            ? rawW.toDouble()
+            : double.tryParse(rawW.toString());
+        if (wVal != null) _weightKg = wVal.clamp(200.0, 800.0);
       }
-    }
 
-    // Health Status from previous_disease (disease field fixed to 'None')
-    final prevDisease = cow['previous_disease'];
-    if (prevDisease is List && prevDisease.isNotEmpty) {
-      setState(() => _healthStatus = 'Disease');
-    } else {
-      setState(() => _healthStatus = 'Healthy');
-    }
+      // Age from birthdate
+      final birthdateStr = cow['birthdate'] as String?;
+      if (birthdateStr != null && birthdateStr.isNotEmpty) {
+        final birth = DateTime.tryParse(birthdateStr);
+        if (birth != null) {
+          final months = _monthsBetween(birth, DateTime.now());
+          _ageMonths = months.clamp(12, 120);
+        }
+      }
+
+      // Health Status from previous_disease (disease is fixed to 'None')
+      final prevDisease = cow['previous_disease'];
+      _healthStatus = (prevDisease is List && prevDisease.isNotEmpty)
+          ? 'Disease'
+          : 'Healthy';
+    });
 
     // ── Overlay with latest saved nutrition input_data ──
     try {
