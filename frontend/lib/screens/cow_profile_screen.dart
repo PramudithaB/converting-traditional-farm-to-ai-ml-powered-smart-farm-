@@ -491,7 +491,12 @@ class _CowProfileScreenState extends State<CowProfileScreen> {
     if (births.isEmpty) return _emptyState('No birth predictions yet');
     return Column(
       children: births.map<Widget>((b) {
-        final days = b['estimated_days_to_birth']?.toString() ?? '—';
+        final rawDays = b['estimated_days_to_birth'];
+        final hours = rawDays != null
+            ? (rawDays is num ? rawDays : double.tryParse(rawDays.toString()))
+                    ?.toStringAsFixed(1) ??
+                '—'
+            : '—';
         final will = b['will_birth_in_2_days']?.toString() ?? 'No';
         final date = _formatDate(b['created_at']?.toString());
         final soon = will.toLowerCase() == 'yes';
@@ -513,11 +518,11 @@ class _CowProfileScreenState extends State<CowProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Est. $days days to birth',
+                    Text('Est. $hours hours to birth',
                         style: TextStyle(fontWeight: FontWeight.w700,
                             color: soon ? Colors.pink.shade700 : Colors.black87,
                             fontSize: 13)),
-                    Text('Birth in 2 days: $will  ·  $date',
+                    Text('Birth in 1 day: $will  ·  $date',
                         style: const TextStyle(fontSize: 11, color: Colors.grey)),
                   ],
                 ),
