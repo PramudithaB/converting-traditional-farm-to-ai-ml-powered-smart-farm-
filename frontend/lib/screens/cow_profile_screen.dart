@@ -296,7 +296,8 @@ class _CowProfileScreenState extends State<CowProfileScreen> {
             _infoRow('Weight',
                 '${cow['weight'] != null ? '${double.tryParse(cow['weight'].toString())?.toStringAsFixed(1) ?? "—"} kg' : 'N/A'}',
                 icon: Icons.monitor_weight_outlined),
-            _infoRow('Lactation', '${cow['lactation_month'] ?? 'N/A'} months', icon: Icons.water_drop_outlined),
+            _infoRow('Parity',    '${cow['parity'] ?? '0'} calvings',           icon: Icons.repeat_outlined),
+            _infoRow('Lactation', '${cow['lactation_month'] ?? 'N/A'} months',  icon: Icons.water_drop_outlined),
           ],
         ),
       ),
@@ -434,8 +435,18 @@ class _CowProfileScreenState extends State<CowProfileScreen> {
     return Column(
       children: feeds.map<Widget>((f) {
         final date = _formatDate(f['created_at']?.toString());
-        final weight = f['weight']?.toString() ?? '—';
-        final milk = f['milk_yield']?.toString() ?? '—';
+        final rawW = f['cow_weight_kg'];
+        final weight = rawW != null
+            ? '${(rawW is num ? rawW : double.tryParse(rawW.toString()))?.toStringAsFixed(1) ?? rawW}'
+            : '—';
+        final rawM = f['milk_yield_l'];
+        final milk = rawM != null
+            ? '${(rawM is num ? rawM : double.tryParse(rawM.toString()))?.toStringAsFixed(1) ?? rawM}'
+            : '—';
+        final dailyFeed = f['daily_feed_kg'];
+        final feed = dailyFeed != null
+            ? '${(dailyFeed is num ? dailyFeed : double.tryParse(dailyFeed.toString()))?.toStringAsFixed(2) ?? dailyFeed} kg'
+            : '—';
         final activity = f['activity']?.toString() ?? '—';
         return Container(
           margin: const EdgeInsets.only(bottom: 8),
@@ -458,8 +469,11 @@ class _CowProfileScreenState extends State<CowProfileScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Weight: ${weight}kg  ·  Milk: ${milk}L  ·  $activity',
+                    Text('Weight: ${weight} kg  ·  Milk: ${milk} L  ·  $activity',
                         style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+                    Text('Daily Feed: $feed',
+                        style: TextStyle(fontSize: 12, color: Colors.green.shade700)),
+
                     Text(date, style: const TextStyle(fontSize: 11, color: Colors.grey)),
                   ],
                 ),
