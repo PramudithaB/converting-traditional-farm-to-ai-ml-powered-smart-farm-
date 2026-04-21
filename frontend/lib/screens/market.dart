@@ -1,6 +1,5 @@
-﻿import 'package:flutter/material.dart';
-import '../services/api_service.dart';
-import '../api/prediction_api.dart';
+import 'dart:ui' as ui;
+import 'package:flutter/material.dart';
 
 class MarketScreen extends StatefulWidget {
   const MarketScreen({super.key});
@@ -11,295 +10,372 @@ class MarketScreen extends StatefulWidget {
 
 class _MarketScreenState extends State<MarketScreen> {
   final _formKey = GlobalKey<FormState>();
-  double _currentPrice = 50.0;
-  double _monthlyMilkLitres = 1000.0;
-  double _fatPercentage = 4.0;
-  double _snfPercentage = 8.5;
-  int _diseaseStage = 0;
-  int _feedQuality = 5;
-  int _lactationMonth = 3;
-  int _month = 1;
-  bool _isPredicting = false;
-  Map<String, dynamic>? _result;
 
-  final List<String> _monthNames = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
-  ];
+  // Controllers
+  final _priceCtrl = TextEditingController();            // Local_Milk_Price_LKR_per_Litre
+  final _monthlyLitresCtrl = TextEditingController();    // Monthly_Milk_Litres
+  final _fatCtrl = TextEditingController();              // Fat_Percentage
+  final _snfCtrl = TextEditingController();              // SNF_Percentage
+  final _lactMonthCtrl = TextEditingController();        // Lactation_Month
 
-  Future<void> _predictIncome() async {
-    setState(() {
-      _isPredicting = true;
-    });
+  // NEW: Total cows
+  final _totalCowsCtrl = TextEditingController();
 
-    try {
-      final response = await ApiService.predictMilkMarket(
-        currentPrice: _currentPrice,
-        monthlyMilkLitres: _monthlyMilkLitres,
-        fatPercentage: _fatPercentage,
-        snfPercentage: _snfPercentage,
-        diseaseStage: _diseaseStage,
-        feedQuality: _feedQuality,
-        lactationMonth: _lactationMonth,
-        month: _month,
-      );
-      setState(() {
-        _result = response;
-        _isPredicting = false;
-      });
+  // Dropdowns
+  int _diseaseStage = 0;        // Disease_Stage (0=None, 1=Mild, 2=Moderate, 3=Severe)
+  int _feedQuality = 2;         // Feed_Quality_Encoded (1=Poor, 2=Average, 3=Good)
+  int _month = DateTime.now().month; // Month (1..12)
 
-      // Save to smartfarm database
-      PredictionApi.saveMilkMarket(
-        currentPrice: _currentPrice,
-        monthlyMilkLitres: _monthlyMilkLitres,
-        fatPercentage: _fatPercentage,
-        snfPercentage: _snfPercentage,
-        diseaseStage: _diseaseStage,
-        feedQuality: _feedQuality,
-        lactationMonth: _lactationMonth,
-        month: _month,
-        predictedPriceChange: (response['predicted_price_change_lkr_per_litre'] as num).toDouble(),
-        predictedNextPrice: (response['predicted_next_month_price_lkr_per_litre'] as num).toDouble(),
-        predictedNextIncome: (response['predicted_next_month_income_lkr'] as num).toDouble(),
-      ).catchError((e) => debugPrint('Save milk market failed: $e'));
-    } catch (e) {
-      setState(() {
-        _isPredicting = false;
-      });
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
-      );
-    }
-  }
+  bool _predicting = false;
+  String? _result;
 
   @override
-  Widget build(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    return Scaffold(
-      appBar: AppBar(title: const Text('Milk Market Analyzer')),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [cs.primaryContainer, cs.secondaryContainer],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                padding: const EdgeInsets.all(20),
-                child: Column(
-                  children: [
-                    Icon(Icons.analytics, size: 48, color: cs.onPrimaryContainer),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Milk Market Prediction',
-                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                            color: cs.onPrimaryContainer,
-                            fontWeight: FontWeight.bold,
-                          ),
-                      textAlign: TextAlign.center,
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Current Price: LKR ${_currentPrice.toStringAsFixed(2)}/liter',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              Slider(
-                value: _currentPrice,
-                min: 20,
-                max: 2000,
-                divisions: 180,
-                label: 'LKR ${_currentPrice.toStringAsFixed(2)}',
-                onChanged: (v) => setState(() => _currentPrice = v),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Monthly Milk: ${_monthlyMilkLitres.toStringAsFixed(0)} liters',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              Slider(
-                value: _monthlyMilkLitres,
-                min: 100,
-                max: 5000,
-                divisions: 49,
-                label: '${_monthlyMilkLitres.toStringAsFixed(0)}L',
-                onChanged: (v) => setState(() => _monthlyMilkLitres = v),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Fat Percentage: ${_fatPercentage.toStringAsFixed(1)}%',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              Slider(
-                value: _fatPercentage,
-                min: 2.0,
-                max: 6.0,
-                divisions: 40,
-                label: '${_fatPercentage.toStringAsFixed(1)}%',
-                onChanged: (v) => setState(() => _fatPercentage = v),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'SNF Percentage: ${_snfPercentage.toStringAsFixed(1)}%',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              Slider(
-                value: _snfPercentage,
-                min: 7.0,
-                max: 10.0,
-                divisions: 30,
-                label: '${_snfPercentage.toStringAsFixed(1)}%',
-                onChanged: (v) => setState(() => _snfPercentage = v),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Disease Stage: $_diseaseStage',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              Slider(
-                value: _diseaseStage.toDouble(),
-                min: 0,
-                max: 3,
-                divisions: 3,
-                label: '$_diseaseStage',
-                onChanged: (v) => setState(() => _diseaseStage = v.toInt()),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Feed Quality: $_feedQuality/10',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              Slider(
-                value: _feedQuality.toDouble(),
-                min: 1,
-                max: 10,
-                divisions: 9,
-                label: '$_feedQuality',
-                onChanged: (v) => setState(() => _feedQuality = v.toInt()),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Lactation Month: $_lactationMonth',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              Slider(
-                value: _lactationMonth.toDouble(),
-                min: 1,
-                max: 10,
-                divisions: 9,
-                label: '$_lactationMonth',
-                onChanged: (v) => setState(() => _lactationMonth = v.toInt()),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                'Month: ${_monthNames[_month - 1]}',
-                style: Theme.of(context).textTheme.titleMedium,
-              ),
-              Slider(
-                value: _month.toDouble(),
-                min: 1,
-                max: 12,
-                divisions: 11,
-                label: _monthNames[_month - 1],
-                onChanged: (v) => setState(() => _month = v.toInt()),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: _isPredicting ? null : _predictIncome,
-                icon: _isPredicting
-                    ? const SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.calculate),
-                label: Text(_isPredicting ? 'Predicting...' : 'Predict Income'),
-                style: ElevatedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                ),
-              ),
-              const SizedBox(height: 24),
-              if (_result != null) ...[
-                Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Icon(Icons.attach_money, color: cs.primary, size: 32),
-                            const SizedBox(width: 12),
-                            Text(
-                              'Prediction Results',
-                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                            ),
-                          ],
-                        ),
-                        const Divider(height: 24),
-                        _buildResultRow(
-                          'Next Month Income',
-                          'LKR ${(_result!['predicted_next_month_income_lkr'] as num?)?.toStringAsFixed(2) ?? 'N/A'}',
-                          cs,
-                        ),
-                        _buildResultRow(
-                          'Next Month Price',
-                          'LKR ${(_result!['predicted_next_month_price_lkr_per_litre'] as num?)?.toStringAsFixed(2) ?? 'N/A'} / L',
-                          cs,
-                        ),
-                        _buildResultRow(
-                          'Price Change',
-                          'LKR ${(_result!['predicted_price_change_lkr_per_litre'] as num?)?.toStringAsFixed(2) ?? 'N/A'} / L',
-                          cs,
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ],
+  void dispose() {
+    _priceCtrl.dispose();
+    _monthlyLitresCtrl.dispose();
+    _fatCtrl.dispose();
+    _snfCtrl.dispose();
+    _lactMonthCtrl.dispose();
+    _totalCowsCtrl.dispose(); // NEW
+    super.dispose();
+  }
+
+  InputDecoration _inputDecoration(BuildContext context, String label, IconData icon) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: const TextStyle(color: Colors.white),
+      prefixIcon: Icon(icon, color: Colors.white),
+      fillColor: Colors.white.withOpacity(0.12),
+    );
+  }
+
+  Future<void> _predictMarket() async {
+    if (!_formKey.currentState!.validate()) return;
+
+    setState(() {
+      _predicting = true;
+      _result = null;
+    });
+
+    // Parse inputs
+    final price = double.parse(_priceCtrl.text.trim());
+    final litres = double.parse(_monthlyLitresCtrl.text.trim());
+    final fat = double.parse(_fatCtrl.text.trim());
+    final snf = double.parse(_snfCtrl.text.trim());
+    final lactMonth = int.parse(_lactMonthCtrl.text.trim());
+
+    // NEW
+    final totalCows = int.parse(_totalCowsCtrl.text.trim());
+
+    final diseaseStage = _diseaseStage;
+    final feedQuality = _feedQuality;
+    final month = _month;
+
+    // IMPORTANT:
+    // Your Flask API currently expects keys like:
+    // data['current_price'], data['monthly_milk_litres'], ...
+    // So this payload should match THAT (not your feature column names).
+    final payload = {
+      'current_price': price,
+      'monthly_milk_litres': litres,
+      'fat_percentage': fat,
+      'snf_percentage': snf,
+      'disease_stage': diseaseStage,
+      'feed_quality': feedQuality,
+      'lactation_month': lactMonth,
+      'month': month,
+      'total_cows': totalCows, // NEW
+    };
+
+    // TODO: Replace with real API call
+    // final response = await http.post(Uri.parse("http://<your-ip>:5000/predict-income"),
+    //   headers: {'Content-Type': 'application/json'},
+    //   body: jsonEncode(payload),
+    // );
+
+    // --- Temporary heuristic (simulation only) ---
+    double revenue = price * litres;
+
+    // OPTIONAL: Use total cows to show "per cow litres" hint (pure UI simulation)
+    final litresPerCow = litres / (totalCows == 0 ? 1 : totalCows);
+
+    final fatFactor = 1.0 + ((fat - 3.5) / 20.0); // baseline ~3.5%
+    final snfFactor = 1.0 + ((snf - 8.5) / 40.0); // baseline ~8.5%
+
+    double feedFactor;
+    switch (feedQuality) {
+      case 1: feedFactor = 0.95; break;
+      case 2: feedFactor = 1.00; break;
+      case 3: feedFactor = 1.05; break;
+      default: feedFactor = 1.0;
+    }
+
+    double diseaseFactor;
+    switch (diseaseStage) {
+      case 0: diseaseFactor = 1.00; break;
+      case 1: diseaseFactor = 0.97; break;
+      case 2: diseaseFactor = 0.92; break;
+      case 3: diseaseFactor = 0.85; break;
+      default: diseaseFactor = 1.0;
+    }
+
+    final peak = 4.0;
+    final lactFactor = (1.05 - (((lactMonth - peak).abs()) / 40.0)).clamp(0.9, 1.05);
+
+    const seasonal = {
+      1: 1.00, 2: 0.99, 3: 1.01, 4: 1.02, 5: 1.03, 6: 0.98,
+      7: 0.97, 8: 0.98, 9: 1.00, 10: 1.02, 11: 1.01, 12: 1.00,
+    };
+    final monthFactor = seasonal[month] ?? 1.0;
+
+    final adjustedRevenue = revenue * fatFactor * snfFactor * feedFactor * diseaseFactor * lactFactor * monthFactor;
+
+    await Future.delayed(const Duration(milliseconds: 600));
+
+    setState(() {
+      _predicting = false;
+      _result =
+      'Estimated monthly revenue: LKR ${adjustedRevenue.toStringAsFixed(0)}\n'
+          'Inputs:\n'
+          '• Price: LKR ${price.toStringAsFixed(2)} / L\n'
+          '• Litres: ${litres.toStringAsFixed(0)} L\n'
+          '• Total cows: $totalCows\n'
+          '• Litres/cow: ${litresPerCow.toStringAsFixed(2)} L\n'
+          '• Fat: ${fat.toStringAsFixed(2)}%\n'
+          '• SNF: ${snf.toStringAsFixed(2)}%\n'
+          '• Disease stage: $diseaseStage\n'
+          '• Feed quality: $feedQuality\n'
+          '• Lactation month: $lactMonth\n'
+          '• Month: $month\n\n'
+          'Note: This is a simulated preview. Wire up your API to get real predictions.\n'
+          'Payload: $payload';
+    });
+  }
+
+  Widget _glassContainer(BuildContext context, {required Widget child}) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(24),
+      child: BackdropFilter(
+        filter: ui.ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          margin: const EdgeInsets.symmetric(horizontal: 16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white.withOpacity(0.25)),
           ),
+          child: child,
         ),
       ),
     );
   }
 
-  Widget _buildResultRow(String label, String value, ColorScheme cs) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+
+    return Scaffold(
+      appBar: AppBar(title: const Text('Market Analyze')),
+      body: Stack(
         children: [
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 16,
-              color: cs.onSurface.withOpacity(0.7),
+          Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [cs.primary, cs.secondary],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
             ),
           ),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: cs.primary,
+          Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 640),
+              child: _glassContainer(
+                context,
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 26,
+                            backgroundColor: cs.primaryContainer,
+                            child: Icon(Icons.show_chart, color: cs.onPrimaryContainer),
+                          ),
+                          const SizedBox(width: 12),
+                          Text(
+                            'Milk Market Predictor',
+                            style: Theme.of(context)
+                                .textTheme
+                                .headlineSmall
+                                ?.copyWith(color: Colors.white, fontWeight: FontWeight.w800),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+
+                      TextFormField(
+                        controller: _priceCtrl,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: _inputDecoration(context, 'Local Milk Price (LKR/Litre)', Icons.currency_rupee),
+                        keyboardType: TextInputType.number,
+                        validator: (v) {
+                          final n = double.tryParse(v?.trim() ?? '');
+                          if (n == null || n <= 0) return 'Enter a valid price';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      TextFormField(
+                        controller: _monthlyLitresCtrl,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: _inputDecoration(context, 'Monthly Milk (Litres)', Icons.water_drop),
+                        keyboardType: TextInputType.number,
+                        validator: (v) {
+                          final n = double.tryParse(v?.trim() ?? '');
+                          if (n == null || n <= 0) return 'Enter litres for the month';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      // NEW FIELD: Total Cows
+                      TextFormField(
+                        controller: _totalCowsCtrl,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: _inputDecoration(context, 'Total Cows', Icons.pets),
+                        keyboardType: TextInputType.number,
+                        validator: (v) {
+                          final n = int.tryParse(v?.trim() ?? '');
+                          if (n == null || n <= 0) return 'Enter total number of cows';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      TextFormField(
+                        controller: _fatCtrl,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: _inputDecoration(context, 'Fat Percentage (%)', Icons.scale),
+                        keyboardType: TextInputType.number,
+                        validator: (v) {
+                          final n = double.tryParse(v?.trim() ?? '');
+                          if (n == null || n < 0) return 'Enter a valid %';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      TextFormField(
+                        controller: _snfCtrl,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: _inputDecoration(context, 'SNF Percentage (%)', Icons.bubble_chart),
+                        keyboardType: TextInputType.number,
+                        validator: (v) {
+                          final n = double.tryParse(v?.trim() ?? '');
+                          if (n == null || n < 0) return 'Enter a valid %';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      InputDecorator(
+                        decoration: _inputDecoration(context, 'Disease Stage', Icons.local_hospital),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<int>(
+                            value: _diseaseStage,
+                            items: const [
+                              DropdownMenuItem(value: 0, child: Text('None')),
+                              DropdownMenuItem(value: 1, child: Text('Mild')),
+                              DropdownMenuItem(value: 2, child: Text('Moderate')),
+                              DropdownMenuItem(value: 3, child: Text('Severe')),
+                            ],
+                            onChanged: (v) => setState(() => _diseaseStage = v ?? 0),
+                            dropdownColor: Colors.black87,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      InputDecorator(
+                        decoration: _inputDecoration(context, 'Feed Quality (Encoded)', Icons.restaurant),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<int>(
+                            value: _feedQuality,
+                            items: const [
+                              DropdownMenuItem(value: 1, child: Text('1 - Poor')),
+                              DropdownMenuItem(value: 2, child: Text('2 - Average')),
+                              DropdownMenuItem(value: 3, child: Text('3 - Good')),
+                            ],
+                            onChanged: (v) => setState(() => _feedQuality = v ?? 2),
+                            dropdownColor: Colors.black87,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
+                      TextFormField(
+                        controller: _lactMonthCtrl,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: _inputDecoration(context, 'Lactation Month', Icons.calendar_month),
+                        keyboardType: TextInputType.number,
+                        validator: (v) {
+                          final n = int.tryParse(v?.trim() ?? '');
+                          if (n == null || n < 0) return 'Enter a valid month number';
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 12),
+
+                      InputDecorator(
+                        decoration: _inputDecoration(context, 'Month', Icons.event),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<int>(
+                            value: _month,
+                            items: List.generate(12, (i) {
+                              final m = i + 1;
+                              return DropdownMenuItem(
+                                value: m,
+                                child: Text('Month $m'),
+                              );
+                            }),
+                            onChanged: (v) => setState(() => _month = v ?? DateTime.now().month),
+                            dropdownColor: Colors.black87,
+                            style: const TextStyle(color: Colors.white),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+
+                      if (_result != null)
+                        Text(
+                          _result!,
+                          style: const TextStyle(color: Colors.white),
+                          textAlign: TextAlign.left,
+                        ),
+                      const SizedBox(height: 12),
+
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: _predicting ? null : _predictMarket,
+                          icon: _predicting
+                              ? const SizedBox(
+                              height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                              : const Icon(Icons.insights),
+                          label: const Text('Predict Market'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ),
           ),
         ],

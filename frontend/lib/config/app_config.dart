@@ -24,7 +24,7 @@ class AppConfig {
   static const String host = _useHotspot
       ? '192.168.119.142'
       : _useWifi
-          ? '192.168.8.100'
+          ? '192.168.8.101'
           : '10.0.2.2';
 
   static const String laravelBase = 'http://$host:8000';
