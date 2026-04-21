@@ -143,12 +143,8 @@ class _MarketScreenState extends State<MarketScreen> {
           '• Litres/cow: ${litresPerCow.toStringAsFixed(2)} L\n'
           '• Fat: ${fat.toStringAsFixed(2)}%\n'
           '• SNF: ${snf.toStringAsFixed(2)}%\n'
-          '• Disease stage: $diseaseStage\n'
-          '• Feed quality: $feedQuality\n'
           '• Lactation month: $lactMonth\n'
-          '• Month: $month\n\n'
-          'Note: This is a simulated preview. Wire up your API to get real predictions.\n'
-          'Payload: $payload';
+          '• Month: $month';
     });
   }
 
@@ -283,42 +279,7 @@ class _MarketScreenState extends State<MarketScreen> {
                       ),
                       const SizedBox(height: 12),
 
-                      InputDecorator(
-                        decoration: _inputDecoration(context, 'Disease Stage', Icons.local_hospital),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<int>(
-                            value: _diseaseStage,
-                            items: const [
-                              DropdownMenuItem(value: 0, child: Text('None')),
-                              DropdownMenuItem(value: 1, child: Text('Mild')),
-                              DropdownMenuItem(value: 2, child: Text('Moderate')),
-                              DropdownMenuItem(value: 3, child: Text('Severe')),
-                            ],
-                            onChanged: (v) => setState(() => _diseaseStage = v ?? 0),
-                            dropdownColor: Colors.black87,
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
 
-                      InputDecorator(
-                        decoration: _inputDecoration(context, 'Feed Quality (Encoded)', Icons.restaurant),
-                        child: DropdownButtonHideUnderline(
-                          child: DropdownButton<int>(
-                            value: _feedQuality,
-                            items: const [
-                              DropdownMenuItem(value: 1, child: Text('1 - Poor')),
-                              DropdownMenuItem(value: 2, child: Text('2 - Average')),
-                              DropdownMenuItem(value: 3, child: Text('3 - Good')),
-                            ],
-                            onChanged: (v) => setState(() => _feedQuality = v ?? 2),
-                            dropdownColor: Colors.black87,
-                            style: const TextStyle(color: Colors.white),
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 12),
 
                       TextFormField(
                         controller: _lactMonthCtrl,
